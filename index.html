@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- Crucial for mobile responsiveness and scaling -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Modern AI Chatbot (Full Screen Mobile)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Load Libraries *BEFORE* the main script -->
+    <!-- Marked.js CDN for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify CDN for sanitizing HTML output -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.10/purify.min.js" integrity="sha512-dddDP5i3GZUhvKhk+FjJAU5jVIxe7hI245JL1N8QSKPLFmnBPR9uNRaGnYkYvcvh4KPeKj2WPcSX6K5FCrJMgw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<style>
+    /* Custom Scrollbar for Webkit Browsers */
+    .chat-area::-webkit-scrollbar { width: 6px; }
+    .chat-area::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .chat-area::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+    .chat-area::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+    /* Define primary color */
+    :root {
+        --primary-color: #2563eb; /* Tailwind blue-600 */
+        --primary-color-lightest: #eff6ff; /* Tailwind blue-50 */
+        --primary-color-lighter: #dbeafe;  /* Tailwind blue-100 */
+        --primary-color-border: #bfdbfe; /* Tailwind blue-200 */
+    }
+
+    /* Apply Tailwind classes using custom properties */
+    .bg-primary-5 { background-color: var(--primary-color-lightest); }
+    .border-primary-10 { border-color: var(--primary-color-border); }
+    .bg-primary-10 { background-color: var(--primary-color-lighter); }
+    .text-primary { color: var(--primary-color); }
+    .bg-primary { background-color: var(--primary-color); }
+
+    /* Smooth transition for message appearance */
+    .message-card { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s ease-out forwards; }
+    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* Typing indicator animation */
+    .typing-dot { display: inline-block; width: 8px; height: 8px; background-color: #9ca3af; border-radius: 50%; margin: 0 2px; animation: typing 1.4s infinite ease-in-out both; }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+
+    /* Layout and Responsiveness - REMOVED specific .chat-container height rules here */
+    /* Height is now controlled by Tailwind classes on the element itself */
+
+    /* Error Message Styling (for actual API/network errors) */
+    .error-message .message-text { color: #ef4444; /* red-500 */ font-style: italic; }
+    .error-message .fa-exclamation-triangle { color: #f97316; /* orange-500 */ }
+
+    /* --- Enhanced Markdown Content Styling (kept from previous) --- */
+    .message-text > *:first-child { margin-top: 0 !important; }
+    .message-text > *:last-child { margin-bottom: 0 !important; }
+    .message-text h1, .message-text h2, .message-text h3, .message-text h4, .message-text h5, .message-text h6 { font-weight: 600; margin-top: 1em; margin-bottom: 0.6em; line-height: 1.3; color: #1f2937; }
+    .message-text h1 { font-size: 1.5em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; }
+    .message-text h2 { font-size: 1.25em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em;}
+    .message-text h3 { font-size: 1.125em; }
+    .message-text h4 { font-size: 1em; font-weight: 500; }
+    .message-text p { margin-bottom: 0.8em; line-height: 1.6; color: #374151; }
+    .message-text ul, .message-text ol { margin-left: 1.5em; margin-bottom: 1em; padding-left: 0.5em; }
+    .message-text ul { list-style-type: disc; } .message-text ol { list-style-type: decimal; }
+    .message-text li { margin-bottom: 0.4em; line-height: 1.5; }
+    .message-text li > p { margin-bottom: 0.2em; }
+    .message-text ul ul, .message-text ol ol, .message-text ul ol, .message-text ol ul { margin-top: 0.4em; margin-bottom: 0.4em; }
+    .message-text a { color: var(--primary-color); text-decoration: underline; font-weight: 500; }
+    .message-text a:hover { text-decoration: none; color: #1d4ed8; }
+    .message-text code { background-color: #e5e7eb; color: #4b5563; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; word-wrap: break-word; }
+    .message-text pre { background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 1em; border-radius: 6px; overflow-x: auto; margin-top: 0.5em; margin-bottom: 1em; font-size: 0.9em; line-height: 1.4; color: #1f2937; }
+    .message-text pre code { background-color: transparent !important; padding: 0 !important; border-radius: 0 !important; font-size: 1em !important; color: inherit; border: none; }
+    .message-text table { border-collapse: collapse; width: auto; max-width: 100%; margin-top: 1em; margin-bottom: 1.2em; border: 1px solid #d1d5db; font-size: 0.95em; }
+    .message-text th, .message-text td { border: 1px solid #d1d5db; padding: 0.6em 0.8em; text-align: left; line-height: 1.4; }
+    .message-text th { background-color: #f9fafb; font-weight: 600; color: #374151; }
+    .message-text tr:nth-child(even) { background-color: #f9fafb; }
+    .message-text blockquote { border-left: 4px solid #9ca3af; padding: 0.5em 1em; margin-left: 0; margin-right: 0; margin-top: 1em; margin-bottom: 1em; font-style: italic; color: #4b5563; background-color: #f9fafb; }
+    .message-text blockquote p { margin-bottom: 0.3em; }
+    .message-text hr { border: none; border-top: 2px solid #e5e7eb; margin: 1.5em 0; }
+
+    /* Input Disabled State */
+    #message-input:disabled, #send-button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #send-button:disabled:hover { background-color: var(--primary-color); }
+
+    /* Prevent iOS zoom on input focus */
+    #message-input { font-size: 16px !important; }
+
+</style>
+
+</head>
+<!-- MODIFIED: Removed padding for mobile (p-0), added back for sm+ screens (sm:p-4) -->
+<body class="bg-gradient-to-br from-gray-100 to-blue-50 flex items-center justify-center min-h-screen p-0 sm:p-4 font-sans">
+
+<!-- MODIFIED:
+    - Added h-screen to make it full height by default (mobile).
+    - Removed default rounded-lg and border.
+    - Added sm:rounded-lg and sm:border to apply only on small screens and up.
+-->
+<div class="chat-container flex flex-col w-full max-w-2xl bg-white shadow-xl overflow-hidden h-screen sm:rounded-lg sm:border sm:border-gray-200">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="relative">
+                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
+                    <i class="fas fa-robot"></i>
+                </div>
+            </div>
+            <div>
+                <h2 class="text-lg font-semibold text-gray-800">Gemini Chat Assistant</h2>
+                <p class="text-xs text-green-600 font-medium">Online</p>
+            </div>
+        </div>
+        <div class="flex space-x-2">
+             <button title="Clear Chat" id="clear-chat-button" class="text-gray-400 hover:text-red-500 focus:outline-none p-2 rounded-full hover:bg-red-50 transition duration-150">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Chat Area - flex-grow makes it take remaining space -->
+    <div id="chat-area" class="chat-area flex-grow p-4 space-y-4 overflow-y-auto bg-white">
+        <!-- Messages loaded from history or sent by user/AI will appear here -->
+
+        <!-- Typing Indicator Placeholder (kept hidden) -->
+         <div id="typing-indicator" class="hidden items-start space-x-3 message-card">
+             <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] flex items-center justify-center border border-[#E5E8EB]">
+                 <i class="fas fa-robot text-gray-700 text-sm"></i>
+             </div>
+             <div class="flex-1">
+                 <div class="bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 inline-block shadow-sm">
+                     <div class="flex items-center space-x-1">
+                         <span class="typing-dot"></span>
+                         <span class="typing-dot"></span>
+                         <span class="typing-dot"></span>
+                     </div>
+                 </div>
+             </div>
+         </div>
+    </div>
+
+    <!-- Input Area -->
+    <footer class="bg-gray-50 border-t border-gray-200 p-3 sm:p-4 flex-shrink-0">
+        <form id="message-form" class="flex items-center space-x-2">
+            <!-- Added min-h-[40px] to ensure consistent height even if text wraps -->
+            <input type="text" id="message-input" aria-label="Type your message" placeholder="Type your message..." class="flex-grow px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 text-sm shadow-sm disabled:opacity-60 disabled:cursor-not-allowed min-h-[40px]" autocomplete="off">
+            <button type="submit" id="send-button" aria-label="Send message" class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition duration-200 shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </form>
+    </footer>
+
+</div>
+
+<!-- Message Templates (Unchanged) -->
+<template id="user-message-template">
+    <div class="flex items-start justify-end space-x-3 message-card">
+        <div class="flex-1 text-right">
+            <div class="bg-primary-5 border border-primary-10 rounded-lg rounded-tr-none p-3 inline-block max-w-xs sm:max-w-md shadow-sm">
+                <p class="message-text text-sm text-gray-800 whitespace-pre-wrap"></p>
+            </div>
+            <span class="message-time text-xs text-gray-400 mt-1 block"></span>
+        </div>
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-10 flex items-center justify-center border border-primary-10 shadow-sm">
+             <i class="fas fa-user text-primary text-sm"></i>
+         </div>
+    </div>
+</template>
+
+<template id="ai-message-template">
+     <div class="flex items-start space-x-3 message-card">
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] flex items-center justify-center border border-[#E5E8EB] shadow-sm">
+            <i class="fas fa-robot text-gray-700 text-sm"></i>
+        </div>
+        <div class="flex-1">
+            <div class="bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-xs sm:max-w-md shadow-sm">
+                <div class="message-text text-sm text-gray-800"></div> <!-- Markdown goes here -->
+            </div>
+             <span class="message-time text-xs text-gray-400 mt-1 block"></span>
+        </div>
+    </div>
+</template>
+
+ <template id="error-message-template">
+     <div class="flex items-start space-x-3 message-card error-message"> <!-- Base error style -->
+        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-50 flex items-center justify-center border border-red-200 shadow-sm">
+            <i class="fas fa-exclamation-triangle text-red-500 text-sm"></i>
+        </div>
+        <div class="flex-1">
+            <div class="bg-red-50 border border-red-200 rounded-lg rounded-tl-none p-3 max-w-xs sm:max-w-md shadow-sm">
+                <p class="message-text text-sm text-red-700"></p>
+            </div>
+             <span class="message-time text-xs text-gray-400 mt-1 block"></span>
+        </div>
+    </div>
+</template>
+
+<!-- Main Application Script (Unchanged - Functionality remains the same) -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+
+        // DOM Element References
+        const chatArea = document.getElementById('chat-area');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+        const messageForm = document.getElementById('message-form');
+        const userMessageTemplate = document.getElementById('user-message-template');
+        const aiMessageTemplate = document.getElementById('ai-message-template');
+        const errorMessageTemplate = document.getElementById('error-message-template');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const clearChatButton = document.getElementById('clear-chat-button');
+
+        // --- API Config ---
+        const API_KEY = "AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74"; // WARNING: Insecure
+        const MODEL_NAME = "gemma-3-27b-it";
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+        // --- State ---
+        const CHAT_HISTORY_KEY = 'geminiChatHistory_session_v5';
+        let chatHistory = [];
+        let isAIGenerating = false;
+        let markedLoaded = false;
+        let sanitizerLoaded = false;
+
+        // --- Initialization ---
+        checkLibraries();
+        configureMarkdown();
+        loadChatHistory();
+        setInputActive(true);
+        scrollToBottom(); // Initial scroll after loading
+
+        // --- Core Functions ---
+
+        function checkLibraries() {
+            markedLoaded = typeof marked !== 'undefined';
+            sanitizerLoaded = typeof DOMPurify !== 'undefined';
+            if (!markedLoaded) console.error("Marked.js library FAILED to load!");
+            if (!sanitizerLoaded) console.error("DOMPurify library FAILED to load! Sanitization disabled. Using basic escaping fallback.");
+        }
+
+        function configureMarkdown() {
+            if (markedLoaded) {
+                marked.setOptions({
+                    gfm: true, breaks: true, mangle: false, headerIds: false
+                });
+                console.log("Marked.js configured.");
+            }
+        }
+
+        function loadChatHistory() {
+             try {
+                 const storedHistory = sessionStorage.getItem(CHAT_HISTORY_KEY);
+                 const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
+                 chatHistory = Array.isArray(parsedHistory) ? parsedHistory : [];
+
+                 const messages = chatArea.querySelectorAll('.message-card:not(#typing-indicator)');
+                 messages.forEach(msg => msg.remove());
+
+                 if (chatHistory.length > 0) {
+                     chatHistory.forEach(message => {
+                         const senderType = message.role === 'user' ? 'user' : (message.role === 'model' ? 'ai' : 'error'); // Handle potential error types in history too
+                         const textContent = message.parts?.[0]?.text || '';
+                         if (textContent) {
+                              // Use 'error' sender type if the history item indicates an error role/structure implicitly
+                              const effectiveSender = (message.role === 'error' || senderType === 'error') ? 'error' : senderType;
+                             displayMessage(textContent, effectiveSender, false, message.timestamp);
+                         }
+                     });
+                     console.log(`Chat history loaded (${chatHistory.length} messages).`);
+                 } else {
+                      console.log("No chat history found. Starting fresh.");
+                 }
+             } catch (error) {
+                 console.error("Error loading/parsing chat history:", error);
+                 chatHistory = [];
+                 sessionStorage.removeItem(CHAT_HISTORY_KEY);
+                 console.error("Chat history cleared due to loading error.");
+             }
+             // No need to call scrollToBottom here, it's called after initialization finishes
+         }
+
+
+        function saveChatHistory() {
+            try {
+                // Limit history size slightly more aggressively if needed, e.g., last 30 messages
+                const historyToSave = chatHistory.slice(-30);
+                sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(historyToSave));
+            } catch (error) { console.error("Error saving chat history:", error); }
+        }
+
+        function getCurrentTime() {
+            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function scrollToBottom() {
+            // Using requestAnimationFrame for smoother scrolling after DOM updates
+            requestAnimationFrame(() => {
+                chatArea.scrollTop = chatArea.scrollHeight;
+            });
+        }
+
+        function setInputActive(active) {
+            isAIGenerating = !active;
+            messageInput.disabled = !active;
+            sendButton.disabled = !active;
+        }
+
+        function displayMessage(messageContent, senderType, animate = true, timestamp = null) {
+            let template, messageElement;
+            let textContainer;
+
+            if (senderType === 'user') template = userMessageTemplate;
+            else if (senderType === 'ai') template = aiMessageTemplate;
+            else if (senderType === 'error') template = errorMessageTemplate;
+            else { console.error("Invalid senderType:", senderType); return; }
+
+            messageElement = template.content.cloneNode(true).firstElementChild;
+            textContainer = messageElement.querySelector('.message-text');
+            if (!textContainer) { console.error("'.message-text' not found in template:", senderType); return; }
+
+
+            if (senderType === 'user' || senderType === 'error') {
+                textContainer.textContent = messageContent;
+            } else if (senderType === 'ai') {
+                renderMarkdown(textContainer, messageContent);
+            }
+
+            const timeElement = messageElement.querySelector('.message-time');
+            if (timeElement) timeElement.textContent = timestamp || getCurrentTime();
+
+            if (!animate) {
+                // Ensure styles allowing animation are removed if not animating
+                messageElement.style.opacity = 1;
+                messageElement.style.transform = 'translateY(0)';
+                messageElement.style.animation = 'none'; // Explicitly remove animation
+                // Don't remove message-card class itself if it's used for selection/styling elsewhere
+            } else {
+                 // Ensure animation styles are present if animating
+                 messageElement.style.opacity = ''; // Reset to allow animation
+                 messageElement.style.transform = ''; // Reset to allow animation
+                 messageElement.style.animation = ''; // Use CSS animation defined by message-card
+            }
+
+            const existingTypingIndicator = chatArea.querySelector('#typing-indicator');
+            if (existingTypingIndicator?.parentNode === chatArea) {
+                chatArea.insertBefore(messageElement, existingTypingIndicator);
+            } else {
+                chatArea.appendChild(messageElement);
+            }
+
+            // Always scroll after adding a message, animating or not (important for history loading)
+             scrollToBottom();
+        }
+
+        function renderMarkdown(containerElement, markdownText) {
+            if (!markedLoaded) {
+                console.error("Cannot render: marked.js is not loaded.");
+                containerElement.textContent = markdownText;
+                return;
+            }
+
+            let rawHtml;
+            try {
+                rawHtml = marked.parse(markdownText);
+            } catch (parseError) {
+                console.error("Error parsing Markdown:", parseError);
+                containerElement.textContent = markdownText;
+                return;
+            }
+
+            if (!sanitizerLoaded) {
+                console.warn("Sanitizer not loaded. Applying basic HTML escaping (unsafe fallback).");
+                const escapedHtml = rawHtml
+                    .replace(/</g, "<") // More standard escaping
+                    .replace(/>/g, ">");
+                containerElement.innerHTML = escapedHtml;
+                return;
+            }
+
+            try {
+                const sanitizedHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+                containerElement.innerHTML = sanitizedHtml;
+            } catch (sanitizeError) {
+                console.error("Error sanitizing HTML:", sanitizeError);
+                containerElement.textContent = markdownText;
+            }
+        }
+
+
+        function showTypingIndicator(show) {
+            if (show) {
+                // Only append if not already there
+                if (!chatArea.contains(typingIndicator)) chatArea.appendChild(typingIndicator);
+                typingIndicator.classList.remove('hidden');
+                typingIndicator.classList.add('flex'); // Make sure it's flex for alignment
+                scrollToBottom(); // Scroll when indicator appears
+            } else {
+                 // Check if it exists before trying to manipulate/remove
+                if (chatArea.contains(typingIndicator)) {
+                    typingIndicator.classList.add('hidden');
+                    typingIndicator.classList.remove('flex');
+                    // Optional: Remove from DOM when hidden? Might prevent layout shifts.
+                    // typingIndicator.remove();
+                }
+            }
+        }
+
+        async function getAIResponse(userMessage) {
+            showTypingIndicator(true);
+            setInputActive(false);
+
+            const userTimestamp = getCurrentTime();
+            const userMessageObject = { role: "user", parts: [{ text: userMessage }], timestamp: userTimestamp };
+            // Push immediately for history context, save later
+            // chatHistory.push(userMessageObject); NO! Add user message AFTER display
+
+            // Prepare history *including* the current user message for the API call
+             const historyForAPI = [{
+                role: "user",
+                parts: [{ text: "Only respond in Roman Urdu—do not use any other language at all" }]
+             }].concat(
+                 chatHistory // Previous history
+                 .slice(-20) // Limit context window
+                 .map(msg => ({ role: msg.role, parts: msg.parts })) // Format for API
+             ).concat([ // Add current user message to the end of the context
+                 { role: userMessageObject.role, parts: userMessageObject.parts }
+             ]);
+
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: historyForAPI }),
+                });
+
+                showTypingIndicator(false);
+
+                let errorHandled = false; // Flag to prevent double error logging/display
+
+                if (!response.ok) {
+                    let errorData, errorMessage = `API Error: ${response.status} ${response.statusText}`;
+                    try {
+                        errorData = await response.json();
+                        console.error("API Error Detail:", errorData);
+                        errorMessage = errorData?.error?.message || errorMessage;
+                    } catch (e) { /* Ignore JSON parsing error if response is not JSON */ }
+                    displayMessage(`Error: ${errorMessage}`, 'error');
+                    // Log error to history as well
+                     chatHistory.push({ role: 'error', parts: [{ text: `Error: ${errorMessage}` }], timestamp: getCurrentTime() });
+                    errorHandled = true; // Mark as handled
+                } else {
+                    const data = await response.json();
+                    console.log("API Success:", data);
+
+                    if (data?.promptFeedback?.blockReason) {
+                        const blockMessage = `Blocked: ${data.promptFeedback.blockReason}`;
+                        displayMessage(blockMessage, 'error');
+                         chatHistory.push({ role: 'error', parts: [{ text: blockMessage }], timestamp: getCurrentTime() });
+                        errorHandled = true; // Mark as handled
+                    } else {
+                        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!aiText) {
+                            const noRespMsg = "Error: Received no valid response text from AI.";
+                            displayMessage(noRespMsg, 'error');
+                             chatHistory.push({ role: 'error', parts: [{ text: noRespMsg }], timestamp: getCurrentTime() });
+                            errorHandled = true; // Mark as handled
+                        } else {
+                            // SUCCESS CASE
+                            const aiTimestamp = getCurrentTime();
+                            const aiMessageObject = { role: "model", parts: [{ text: aiText }], timestamp: aiTimestamp };
+                            chatHistory.push(aiMessageObject); // Add successful AI response to history
+                            displayMessage(aiText, 'ai', true, aiTimestamp);
+                        }
+                    }
+                }
+                // Save history after successful response or handled error
+                 if (!errorHandled || errorHandled) { // Save history in both success and handled error cases
+                     saveChatHistory();
+                 }
+
+            } catch (error) {
+                // Catch unexpected JS errors (e.g., network offline before fetch)
+                console.error("AI Interaction JS Error:", error);
+                showTypingIndicator(false);
+                const jsErrorMsg = `Error: ${error.message || 'An unexpected network or script error occurred.'}`;
+                displayMessage(jsErrorMsg, 'error');
+                 // Log JS error to history
+                 chatHistory.push({ role: 'error', parts: [{ text: jsErrorMsg }], timestamp: getCurrentTime() });
+                 saveChatHistory(); // Save history even after JS error
+            } finally {
+                setInputActive(true); // Always re-enable input
+                messageInput.focus(); // Keep focus on input
+            }
+        }
+
+
+        function handleSendMessage(event) {
+            event.preventDefault();
+            if (isAIGenerating) return; // Prevent sending while AI is thinking
+            const message = messageInput.value.trim();
+            if (message) {
+                const userTimestamp = getCurrentTime();
+                 // 1. Add user message to history *before* displaying
+                 const userMessageObject = { role: "user", parts: [{ text: message }], timestamp: userTimestamp };
+                 chatHistory.push(userMessageObject);
+                 // 2. Display the user message (it will scroll)
+                displayMessage(message, 'user', true, userTimestamp);
+                 // 3. Clear input
+                messageInput.value = '';
+                 // 4. Call AI (which uses the updated chatHistory)
+                getAIResponse(message); // Pass the message text directly
+                // 5. Save history is handled within getAIResponse success/error/finally blocks
+            }
+        }
+
+
+        function clearChat() {
+            if (isAIGenerating) {
+                 // Maybe provide non-alert feedback?
+                 // console.warn("Cannot clear chat while AI is responding.");
+                 // Optionally disable the clear button when isAIGenerating is true
+                 return;
+             }
+
+            // Clear visual chat area completely
+            const messages = chatArea.querySelectorAll('.message-card:not(#typing-indicator)');
+            messages.forEach(msg => msg.remove());
+
+             // Clear data
+            chatHistory = [];
+            sessionStorage.removeItem(CHAT_HISTORY_KEY);
+
+            // Reset UI elements
+            setInputActive(true);
+            messageInput.value = ''; // Clear input field too
+            console.log("Chat cleared.");
+            // No need to add welcome message
+            // Scroll to top might be desirable after clearing
+            chatArea.scrollTop = 0;
+        }
+
+        // --- Event Listeners ---
+        messageForm.addEventListener('submit', handleSendMessage);
+        clearChatButton.addEventListener('click', clearChat);
+
+        // Optional: Re-focus input when window gains focus (useful on mobile)
+        window.addEventListener('focus', () => {
+           // Avoid focusing if AI is thinking or input is disabled for other reasons
+            if (!messageInput.disabled) {
+                 // Small delay might be needed on some browsers
+                 setTimeout(() => messageInput.focus(), 100);
+            }
+        });
+
+
+    }); // End DOMContentLoaded
+</script>
+</body>
+</html>
