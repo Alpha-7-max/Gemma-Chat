@@ -1,565 +1,436 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Crucial for mobile responsiveness and scaling -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Modern AI Chatbot (Full Screen Mobile)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chat</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome CDN for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-
-    <!-- Load Libraries *BEFORE* the main script -->
-    <!-- Marked.js CDN for Markdown rendering -->
+    <!-- Marked.js for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- DOMPurify CDN for sanitizing HTML output -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.10/purify.min.js" integrity="sha512-dddDP5i3GZUhvKhk+FjJAU5jVIxe7hI245JL1N8QSKPLFmnBPR9uNRaGnYkYvcvh4KPeKj2WPcSX6K5FCrJMgw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- DOMPurify for sanitizing HTML output from Marked.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
+    <style>
+        /* Custom CSS for scrollbar and potentially other elements */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* cool-gray-300 */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* cool-gray-400 */
+        }
 
-<style>
-    /* Custom Scrollbar for Webkit Browsers */
-    .chat-area::-webkit-scrollbar { width: 6px; }
-    .chat-area::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-    .chat-area::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
-    .chat-area::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        /* Ensure full height on mobile and constrain on desktop */
+        body {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #e5e7eb; /* bg-gray-200 */
+        }
 
-    /* Define primary color */
-    :root {
-        --primary-color: #2563eb; /* Tailwind blue-600 */
-        --primary-color-lightest: #eff6ff; /* Tailwind blue-50 */
-        --primary-color-lighter: #dbeafe;  /* Tailwind blue-100 */
-        --primary-color-border: #bfdbfe; /* Tailwind blue-200 */
-    }
+        #chat-container {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+        }
 
-    /* Apply Tailwind classes using custom properties */
-    .bg-primary-5 { background-color: var(--primary-color-lightest); }
-    .border-primary-10 { border-color: var(--primary-color-border); }
-    .bg-primary-10 { background-color: var(--primary-color-lighter); }
-    .text-primary { color: var(--primary-color); }
-    .bg-primary { background-color: var(--primary-color); }
+        @media (min-width: 768px) { /* md breakpoint */
+            #chat-container {
+                max-height: 85vh;
+                max-width: 450px; /* Simulates mobile width */
+                border-radius: 1.5rem; /* rounded-2xl */
+                overflow: hidden;
+            }
+        }
 
-    /* Smooth transition for message appearance */
-    .message-card { opacity: 0; transform: translateY(10px); animation: fadeIn 0.3s ease-out forwards; }
-    @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+        /* Custom styling for Markdown elements */
+        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+            font-weight: 600;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+        }
+        .markdown-content h1 { font-size: 1.5em; }
+        .markdown-content h2 { font-size: 1.25em; }
+        .markdown-content h3 { font-size: 1.1em; }
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .markdown-content ul { list-style-type: disc; }
+        .markdown-content ol { list-style-type: decimal; }
+        .markdown-content li { margin-bottom: 0.25rem; }
+        .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .markdown-content code {
+            background-color: #e5e8eb; /* Light gray bg */
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .markdown-content pre {
+            background-color: #1f2937; /* gray-800 */
+            color: #f3f4f6; /* gray-100 */
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 0.5rem;
+            margin-bottom: 1rem;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+         .markdown-content pre code {
+            background-color: transparent;
+            padding: 0;
+            color: inherit;
+         }
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e5e8eb; /* border-[#E5E8EB] */
+        }
+        .markdown-content th, .markdown-content td {
+            border: 1px solid #e5e8eb; /* border-[#E5E8EB] */
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        .markdown-content th {
+            background-color: #f9f9fa; /* bg-[#F9F9FA] */
+            font-weight: 600;
+        }
+        .markdown-content blockquote {
+            border-left: 4px solid #cbd5e1; /* cool-gray-300 */
+            padding-left: 1rem;
+            margin-left: 0;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            color: #6b7280; /* gray-500 */
+            font-style: italic;
+        }
+        .markdown-content a {
+            color: var(--color-primary, #4f46e5);
+            text-decoration: underline;
+        }
+        .markdown-content a:hover {
+            color: #3730a3; /* Darker primary */
+        }
 
-    /* Typing indicator animation */
-    .typing-dot { display: inline-block; width: 8px; height: 8px; background-color: #9ca3af; border-radius: 50%; margin: 0 2px; animation: typing 1.4s infinite ease-in-out both; }
-    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
-    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
-    @keyframes typing { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        /* Typing indicator styles */
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #9ca3af; /* gray-400 */
+            margin: 0 2px;
+            animation: typing 1s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.1s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.2s; }
 
-    /* Layout and Responsiveness - REMOVED specific .chat-container height rules here */
-    /* Height is now controlled by Tailwind classes on the element itself */
+        @keyframes typing {
+            0%, 100% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-3px); }
+        }
 
-    /* Error Message Styling (for actual API/network errors) */
-    .error-message .message-text { color: #ef4444; /* red-500 */ font-style: italic; }
-    .error-message .fa-exclamation-triangle { color: #f97316; /* orange-500 */ }
-
-    /* --- Enhanced Markdown Content Styling (kept from previous) --- */
-    .message-text > *:first-child { margin-top: 0 !important; }
-    .message-text > *:last-child { margin-bottom: 0 !important; }
-    .message-text h1, .message-text h2, .message-text h3, .message-text h4, .message-text h5, .message-text h6 { font-weight: 600; margin-top: 1em; margin-bottom: 0.6em; line-height: 1.3; color: #1f2937; }
-    .message-text h1 { font-size: 1.5em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; }
-    .message-text h2 { font-size: 1.25em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em;}
-    .message-text h3 { font-size: 1.125em; }
-    .message-text h4 { font-size: 1em; font-weight: 500; }
-    .message-text p { margin-bottom: 0.8em; line-height: 1.6; color: #374151; }
-    .message-text ul, .message-text ol { margin-left: 1.5em; margin-bottom: 1em; padding-left: 0.5em; }
-    .message-text ul { list-style-type: disc; } .message-text ol { list-style-type: decimal; }
-    .message-text li { margin-bottom: 0.4em; line-height: 1.5; }
-    .message-text li > p { margin-bottom: 0.2em; }
-    .message-text ul ul, .message-text ol ol, .message-text ul ol, .message-text ol ul { margin-top: 0.4em; margin-bottom: 0.4em; }
-    .message-text a { color: var(--primary-color); text-decoration: underline; font-weight: 500; }
-    .message-text a:hover { text-decoration: none; color: #1d4ed8; }
-    .message-text code { background-color: #e5e7eb; color: #4b5563; padding: 0.2em 0.4em; border-radius: 4px; font-size: 0.9em; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; word-wrap: break-word; }
-    .message-text pre { background-color: #f3f4f6; border: 1px solid #e5e7eb; padding: 1em; border-radius: 6px; overflow-x: auto; margin-top: 0.5em; margin-bottom: 1em; font-size: 0.9em; line-height: 1.4; color: #1f2937; }
-    .message-text pre code { background-color: transparent !important; padding: 0 !important; border-radius: 0 !important; font-size: 1em !important; color: inherit; border: none; }
-    .message-text table { border-collapse: collapse; width: auto; max-width: 100%; margin-top: 1em; margin-bottom: 1.2em; border: 1px solid #d1d5db; font-size: 0.95em; }
-    .message-text th, .message-text td { border: 1px solid #d1d5db; padding: 0.6em 0.8em; text-align: left; line-height: 1.4; }
-    .message-text th { background-color: #f9fafb; font-weight: 600; color: #374151; }
-    .message-text tr:nth-child(even) { background-color: #f9fafb; }
-    .message-text blockquote { border-left: 4px solid #9ca3af; padding: 0.5em 1em; margin-left: 0; margin-right: 0; margin-top: 1em; margin-bottom: 1em; font-style: italic; color: #4b5563; background-color: #f9fafb; }
-    .message-text blockquote p { margin-bottom: 0.3em; }
-    .message-text hr { border: none; border-top: 2px solid #e5e7eb; margin: 1.5em 0; }
-
-    /* Input Disabled State */
-    #message-input:disabled, #send-button:disabled { opacity: 0.6; cursor: not-allowed; }
-    #send-button:disabled:hover { background-color: var(--primary-color); }
-
-    /* Prevent iOS zoom on input focus */
-    #message-input { font-size: 16px !important; }
-
-</style>
-
+        /* Prevent textarea resize handle */
+        #userInput {
+            resize: none;
+            height: 44px; /* Initial height for one line + padding */
+            max-height: 150px; /* Max height before scrolling */
+            overflow-y: auto; /* Add scroll when content exceeds max-height */
+        }
+    </style>
+    <script>
+        // Setup Tailwind CSS primary color variable
+        tailwind.config = {
+          theme: {
+            extend: {
+              colors: {
+                primary: {
+                  DEFAULT: '#6366F1', // Indigo-500
+                  '5': 'rgba(99, 102, 241, 0.05)', // Light shade for bg
+                  '10': 'rgba(99, 102, 241, 0.1)', // Light shade for border/icon bg
+                },
+                foreground: '#111827', // gray-900 (Default text color)
+              }
+            }
+          }
+        }
+        // Define CSS variable for use in custom CSS if needed
+        document.documentElement.style.setProperty('--color-primary', '#6366F1');
+    </script>
 </head>
-<!-- MODIFIED: Removed padding for mobile (p-0), added back for sm+ screens (sm:p-4) -->
-<body class="bg-gradient-to-br from-gray-100 to-blue-50 flex items-center justify-center min-h-screen p-0 sm:p-4 font-sans">
+<body class="bg-gray-200">
 
-<!-- MODIFIED:
-    - Added h-screen to make it full height by default (mobile).
-    - Removed default rounded-lg and border.
-    - Added sm:rounded-lg and sm:border to apply only on small screens and up.
--->
-<div class="chat-container flex flex-col w-full max-w-2xl bg-white shadow-xl overflow-hidden h-screen sm:rounded-lg sm:border sm:border-gray-200">
+    <div id="chat-container" class="bg-white shadow-xl flex flex-col">
 
-    <!-- Header -->
-    <header class="bg-white border-b border-gray-200 p-4 flex items-center justify-between flex-shrink-0">
-        <div class="flex items-center space-x-3">
-            <div class="relative">
-                <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></span>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                    <i class="fas fa-robot"></i>
+        <!-- Header -->
+        <header class="bg-primary text-white p-4 flex items-center justify-between shadow-md z-10 flex-shrink-0">
+            <h1 class="text-lg font-semibold">Gemini Chat</h1>
+             <!-- Placeholder for potential future icons/buttons -->
+             <div></div>
+        </header>
+
+        <!-- Chat Messages Area -->
+        <div id="chatbox" class="flex-grow overflow-y-auto p-4 space-y-4 bg-white">
+            <!-- Initial AI message -->
+            <div class="flex items-start gap-3 message-ai">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] border border-[#E5E8EB] flex items-center justify-center">
+                    <!-- AI Icon (Simple Bot) -->
+                    <svg class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
+                    </svg>
+                </div>
+                <div class="text-sm text-gray-800 bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-[80%] shadow-sm">
+                    <p>Hello! How can I help you today?</p>
                 </div>
             </div>
-            <div>
-                <h2 class="text-lg font-semibold text-gray-800">Gemini Chat Assistant</h2>
-                <p class="text-xs text-green-600 font-medium">Online</p>
+            <!-- Messages will be appended here -->
+        </div>
+
+        <!-- Typing Indicator Placeholder -->
+        <div id="typing-indicator-container" class="hidden p-4 pt-0">
+             <div class="flex items-start gap-3 message-ai">
+                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] border border-[#E5E8EB] flex items-center justify-center">
+                    <svg class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
+                    </svg>
+                </div>
+                <div class="text-sm text-gray-800 bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-[80%] shadow-sm flex items-center">
+                     <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="flex space-x-2">
-             <button title="Clear Chat" id="clear-chat-button" class="text-gray-400 hover:text-red-500 focus:outline-none p-2 rounded-full hover:bg-red-50 transition duration-150">
-                <i class="fas fa-trash-alt"></i>
+
+        <!-- Input Area -->
+        <footer class="bg-white border-t border-gray-200 p-3 sm:p-4 flex items-end gap-2 flex-shrink-0">
+            <textarea
+                id="userInput"
+                rows="1"
+                placeholder="Type your message..."
+                class="flex-grow px-4 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-shadow duration-150"
+            ></textarea>
+            <button id="sendButton" class="bg-primary text-white rounded-full p-2.5 flex-shrink-0 h-[44px] w-[44px] flex items-center justify-center hover:bg-indigo-700 active:bg-indigo-800 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
+                <!-- Send Icon -->
+                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                </svg>
             </button>
-        </div>
-    </header>
-
-    <!-- Chat Area - flex-grow makes it take remaining space -->
-    <div id="chat-area" class="chat-area flex-grow p-4 space-y-4 overflow-y-auto bg-white">
-        <!-- Messages loaded from history or sent by user/AI will appear here -->
-
-        <!-- Typing Indicator Placeholder (kept hidden) -->
-         <div id="typing-indicator" class="hidden items-start space-x-3 message-card">
-             <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] flex items-center justify-center border border-[#E5E8EB]">
-                 <i class="fas fa-robot text-gray-700 text-sm"></i>
-             </div>
-             <div class="flex-1">
-                 <div class="bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 inline-block shadow-sm">
-                     <div class="flex items-center space-x-1">
-                         <span class="typing-dot"></span>
-                         <span class="typing-dot"></span>
-                         <span class="typing-dot"></span>
-                     </div>
-                 </div>
-             </div>
-         </div>
+        </footer>
     </div>
 
-    <!-- Input Area -->
-    <footer class="bg-gray-50 border-t border-gray-200 p-3 sm:p-4 flex-shrink-0">
-        <form id="message-form" class="flex items-center space-x-2">
-            <!-- Added min-h-[40px] to ensure consistent height even if text wraps -->
-            <input type="text" id="message-input" aria-label="Type your message" placeholder="Type your message..." class="flex-grow px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition duration-200 text-sm shadow-sm disabled:opacity-60 disabled:cursor-not-allowed min-h-[40px]" autocomplete="off">
-            <button type="submit" id="send-button" aria-label="Send message" class="flex-shrink-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition duration-200 shadow-md disabled:opacity-60 disabled:cursor-not-allowed">
-                <i class="fas fa-paper-plane"></i>
-            </button>
-        </form>
-    </footer>
+    <script>
+        const chatbox = document.getElementById('chatbox');
+        const userInput = document.getElementById('userInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typing-indicator-container');
 
-</div>
-
-<!-- Message Templates (Unchanged) -->
-<template id="user-message-template">
-    <div class="flex items-start justify-end space-x-3 message-card">
-        <div class="flex-1 text-right">
-            <div class="bg-primary-5 border border-primary-10 rounded-lg rounded-tr-none p-3 inline-block max-w-xs sm:max-w-md shadow-sm">
-                <p class="message-text text-sm text-gray-800 whitespace-pre-wrap"></p>
-            </div>
-            <span class="message-time text-xs text-gray-400 mt-1 block"></span>
-        </div>
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-primary-10 flex items-center justify-center border border-primary-10 shadow-sm">
-             <i class="fas fa-user text-primary text-sm"></i>
-         </div>
-    </div>
-</template>
-
-<template id="ai-message-template">
-     <div class="flex items-start space-x-3 message-card">
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] flex items-center justify-center border border-[#E5E8EB] shadow-sm">
-            <i class="fas fa-robot text-gray-700 text-sm"></i>
-        </div>
-        <div class="flex-1">
-            <div class="bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-xs sm:max-w-md shadow-sm">
-                <div class="message-text text-sm text-gray-800"></div> <!-- Markdown goes here -->
-            </div>
-             <span class="message-time text-xs text-gray-400 mt-1 block"></span>
-        </div>
-    </div>
-</template>
-
- <template id="error-message-template">
-     <div class="flex items-start space-x-3 message-card error-message"> <!-- Base error style -->
-        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-red-50 flex items-center justify-center border border-red-200 shadow-sm">
-            <i class="fas fa-exclamation-triangle text-red-500 text-sm"></i>
-        </div>
-        <div class="flex-1">
-            <div class="bg-red-50 border border-red-200 rounded-lg rounded-tl-none p-3 max-w-xs sm:max-w-md shadow-sm">
-                <p class="message-text text-sm text-red-700"></p>
-            </div>
-             <span class="message-time text-xs text-gray-400 mt-1 block"></span>
-        </div>
-    </div>
-</template>
-
-<!-- Main Application Script (Unchanged - Functionality remains the same) -->
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-
-        // DOM Element References
-        const chatArea = document.getElementById('chat-area');
-        const messageInput = document.getElementById('message-input');
-        const sendButton = document.getElementById('send-button');
-        const messageForm = document.getElementById('message-form');
-        const userMessageTemplate = document.getElementById('user-message-template');
-        const aiMessageTemplate = document.getElementById('ai-message-template');
-        const errorMessageTemplate = document.getElementById('error-message-template');
-        const typingIndicator = document.getElementById('typing-indicator');
-        const clearChatButton = document.getElementById('clear-chat-button');
-
-        // --- API Config ---
-        const API_KEY = "AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74"; // WARNING: Insecure
-        const MODEL_NAME = "gemma-3-27b-it";
+        // WARNING: Storing API keys client-side is insecure. This is for demonstration purposes only.
+        // In a real application, this should be handled via a backend proxy.
+        const API_KEY = 'AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74'; // USE YOUR KEY HERE
+        const MODEL_NAME = 'gemini-1.0-pro-latest'; // Changed model name based on common availability, adjust if needed
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
-        // --- State ---
-        const CHAT_HISTORY_KEY = 'geminiChatHistory_session_v5';
-        let chatHistory = [];
-        let isAIGenerating = false;
-        let markedLoaded = false;
-        let sanitizerLoaded = false;
+        let conversationHistory = []; // Store conversation context
 
-        // --- Initialization ---
-        checkLibraries();
-        configureMarkdown();
-        loadChatHistory();
-        setInputActive(true);
-        scrollToBottom(); // Initial scroll after loading
-
-        // --- Core Functions ---
-
-        function checkLibraries() {
-            markedLoaded = typeof marked !== 'undefined';
-            sanitizerLoaded = typeof DOMPurify !== 'undefined';
-            if (!markedLoaded) console.error("Marked.js library FAILED to load!");
-            if (!sanitizerLoaded) console.error("DOMPurify library FAILED to load! Sanitization disabled. Using basic escaping fallback.");
+        // Function to auto-adjust textarea height
+        function autoAdjustTextareaHeight() {
+            userInput.style.height = 'auto'; // Reset height
+            let newHeight = userInput.scrollHeight;
+            // Clamp height between initial (44px) and max (150px)
+            newHeight = Math.max(44, Math.min(newHeight, 150));
+            userInput.style.height = `${newHeight}px`;
         }
 
-        function configureMarkdown() {
-            if (markedLoaded) {
-                marked.setOptions({
-                    gfm: true, breaks: true, mangle: false, headerIds: false
-                });
-                console.log("Marked.js configured.");
-            }
-        }
+        userInput.addEventListener('input', autoAdjustTextareaHeight);
 
-        function loadChatHistory() {
-             try {
-                 const storedHistory = sessionStorage.getItem(CHAT_HISTORY_KEY);
-                 const parsedHistory = storedHistory ? JSON.parse(storedHistory) : [];
-                 chatHistory = Array.isArray(parsedHistory) ? parsedHistory : [];
+        // --- Message Display Function ---
+        function displayMessage(text, sender, isMarkdown = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('flex', 'items-start', 'gap-3', `message-${sender}`);
 
-                 const messages = chatArea.querySelectorAll('.message-card:not(#typing-indicator)');
-                 messages.forEach(msg => msg.remove());
+            const iconContainer = document.createElement('div');
+            iconContainer.classList.add('flex-shrink-0', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center');
 
-                 if (chatHistory.length > 0) {
-                     chatHistory.forEach(message => {
-                         const senderType = message.role === 'user' ? 'user' : (message.role === 'model' ? 'ai' : 'error'); // Handle potential error types in history too
-                         const textContent = message.parts?.[0]?.text || '';
-                         if (textContent) {
-                              // Use 'error' sender type if the history item indicates an error role/structure implicitly
-                              const effectiveSender = (message.role === 'error' || senderType === 'error') ? 'error' : senderType;
-                             displayMessage(textContent, effectiveSender, false, message.timestamp);
-                         }
-                     });
-                     console.log(`Chat history loaded (${chatHistory.length} messages).`);
-                 } else {
-                      console.log("No chat history found. Starting fresh.");
-                 }
-             } catch (error) {
-                 console.error("Error loading/parsing chat history:", error);
-                 chatHistory = [];
-                 sessionStorage.removeItem(CHAT_HISTORY_KEY);
-                 console.error("Chat history cleared due to loading error.");
-             }
-             // No need to call scrollToBottom here, it's called after initialization finishes
-         }
+            const bubble = document.createElement('div');
+            bubble.classList.add('text-sm', 'rounded-lg', 'p-3', 'max-w-[80%]', 'shadow-sm', 'overflow-hidden'); // Added overflow-hidden
 
+            if (sender === 'user') {
+                messageDiv.classList.add('justify-end');
+                iconContainer.classList.add('bg-primary/10', 'text-primary', 'order-2');
+                bubble.classList.add('bg-primary/5', 'border', 'border-primary/10', 'text-gray-800', 'rounded-br-none', 'order-1');
+                // User Icon (Simple Person)
+                iconContainer.innerHTML = `
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
+                    </svg>`;
+                bubble.textContent = text; // Use textContent for user input (safer)
 
-        function saveChatHistory() {
-            try {
-                // Limit history size slightly more aggressively if needed, e.g., last 30 messages
-                const historyToSave = chatHistory.slice(-30);
-                sessionStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(historyToSave));
-            } catch (error) { console.error("Error saving chat history:", error); }
-        }
+            } else { // AI message
+                messageDiv.classList.add('justify-start');
+                iconContainer.classList.add('bg-[#F9F9FA]', 'text-foreground', 'border', 'border-[#E5E8EB]', 'order-1');
+                bubble.classList.add('bg-[#F9F9FA]', 'border', 'border-[#E5E8EB]', 'text-gray-800', 'rounded-tl-none', 'order-2', 'markdown-content');
+                // AI Icon (Simple Bot)
+                iconContainer.innerHTML = `
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
+                    </svg>`;
 
-        function getCurrentTime() {
-            return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-        }
-
-        function scrollToBottom() {
-            // Using requestAnimationFrame for smoother scrolling after DOM updates
-            requestAnimationFrame(() => {
-                chatArea.scrollTop = chatArea.scrollHeight;
-            });
-        }
-
-        function setInputActive(active) {
-            isAIGenerating = !active;
-            messageInput.disabled = !active;
-            sendButton.disabled = !active;
-        }
-
-        function displayMessage(messageContent, senderType, animate = true, timestamp = null) {
-            let template, messageElement;
-            let textContainer;
-
-            if (senderType === 'user') template = userMessageTemplate;
-            else if (senderType === 'ai') template = aiMessageTemplate;
-            else if (senderType === 'error') template = errorMessageTemplate;
-            else { console.error("Invalid senderType:", senderType); return; }
-
-            messageElement = template.content.cloneNode(true).firstElementChild;
-            textContainer = messageElement.querySelector('.message-text');
-            if (!textContainer) { console.error("'.message-text' not found in template:", senderType); return; }
-
-
-            if (senderType === 'user' || senderType === 'error') {
-                textContainer.textContent = messageContent;
-            } else if (senderType === 'ai') {
-                renderMarkdown(textContainer, messageContent);
-            }
-
-            const timeElement = messageElement.querySelector('.message-time');
-            if (timeElement) timeElement.textContent = timestamp || getCurrentTime();
-
-            if (!animate) {
-                // Ensure styles allowing animation are removed if not animating
-                messageElement.style.opacity = 1;
-                messageElement.style.transform = 'translateY(0)';
-                messageElement.style.animation = 'none'; // Explicitly remove animation
-                // Don't remove message-card class itself if it's used for selection/styling elsewhere
-            } else {
-                 // Ensure animation styles are present if animating
-                 messageElement.style.opacity = ''; // Reset to allow animation
-                 messageElement.style.transform = ''; // Reset to allow animation
-                 messageElement.style.animation = ''; // Use CSS animation defined by message-card
-            }
-
-            const existingTypingIndicator = chatArea.querySelector('#typing-indicator');
-            if (existingTypingIndicator?.parentNode === chatArea) {
-                chatArea.insertBefore(messageElement, existingTypingIndicator);
-            } else {
-                chatArea.appendChild(messageElement);
-            }
-
-            // Always scroll after adding a message, animating or not (important for history loading)
-             scrollToBottom();
-        }
-
-        function renderMarkdown(containerElement, markdownText) {
-            if (!markedLoaded) {
-                console.error("Cannot render: marked.js is not loaded.");
-                containerElement.textContent = markdownText;
-                return;
-            }
-
-            let rawHtml;
-            try {
-                rawHtml = marked.parse(markdownText);
-            } catch (parseError) {
-                console.error("Error parsing Markdown:", parseError);
-                containerElement.textContent = markdownText;
-                return;
-            }
-
-            if (!sanitizerLoaded) {
-                console.warn("Sanitizer not loaded. Applying basic HTML escaping (unsafe fallback).");
-                const escapedHtml = rawHtml
-                    .replace(/</g, "<") // More standard escaping
-                    .replace(/>/g, ">");
-                containerElement.innerHTML = escapedHtml;
-                return;
-            }
-
-            try {
-                const sanitizedHtml = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
-                containerElement.innerHTML = sanitizedHtml;
-            } catch (sanitizeError) {
-                console.error("Error sanitizing HTML:", sanitizeError);
-                containerElement.textContent = markdownText;
-            }
-        }
-
-
-        function showTypingIndicator(show) {
-            if (show) {
-                // Only append if not already there
-                if (!chatArea.contains(typingIndicator)) chatArea.appendChild(typingIndicator);
-                typingIndicator.classList.remove('hidden');
-                typingIndicator.classList.add('flex'); // Make sure it's flex for alignment
-                scrollToBottom(); // Scroll when indicator appears
-            } else {
-                 // Check if it exists before trying to manipulate/remove
-                if (chatArea.contains(typingIndicator)) {
-                    typingIndicator.classList.add('hidden');
-                    typingIndicator.classList.remove('flex');
-                    // Optional: Remove from DOM when hidden? Might prevent layout shifts.
-                    // typingIndicator.remove();
+                if (isMarkdown) {
+                    // Render Markdown and sanitize
+                    const rawHtml = marked.parse(text);
+                    const cleanHtml = DOMPurify.sanitize(rawHtml);
+                    bubble.innerHTML = cleanHtml;
+                } else {
+                     bubble.textContent = text; // Fallback for non-markdown or errors
                 }
             }
+
+            messageDiv.appendChild(iconContainer);
+            messageDiv.appendChild(bubble);
+            chatbox.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        async function getAIResponse(userMessage) {
-            showTypingIndicator(true);
-            setInputActive(false);
+        // --- Show/Hide Typing Indicator ---
+        function showTypingIndicator() {
+            typingIndicator.classList.remove('hidden');
+            chatbox.scrollTop = chatbox.scrollHeight; // Scroll down to show indicator
+        }
 
-            const userTimestamp = getCurrentTime();
-            const userMessageObject = { role: "user", parts: [{ text: userMessage }], timestamp: userTimestamp };
-            // Push immediately for history context, save later
-            // chatHistory.push(userMessageObject); NO! Add user message AFTER display
+        function hideTypingIndicator() {
+            typingIndicator.classList.add('hidden');
+        }
 
-            // Prepare history *including* the current user message for the API call
-             const historyForAPI = [{
-                role: "user",
-                parts: [{ text: "Only respond in Roman Urdu—do not use any other language at all" }]
-             }].concat(
-                 chatHistory // Previous history
-                 .slice(-20) // Limit context window
-                 .map(msg => ({ role: msg.role, parts: msg.parts })) // Format for API
-             ).concat([ // Add current user message to the end of the context
-                 { role: userMessageObject.role, parts: userMessageObject.parts }
-             ]);
+        // --- Send Message Function ---
+        async function sendMessage() {
+            const userText = userInput.value.trim();
+            if (!userText) return;
+
+            // Disable input and button
+            userInput.disabled = true;
+            sendButton.disabled = true;
+
+            // Display user message
+            displayMessage(userText, 'user');
+             // Add user message to history
+            conversationHistory.push({ role: "user", parts: [{ text: userText }] });
+
+            // Clear input and reset height
+            userInput.value = '';
+            autoAdjustTextareaHeight();
+
+            // Show typing indicator
+            showTypingIndicator();
 
 
             try {
+                const payload = {
+                    contents: conversationHistory, // Send the entire history
+                     generationConfig: {
+                        // Add configuration if needed, e.g., temperature, maxOutputTokens
+                        // "temperature": 0.7,
+                        // "maxOutputTokens": 1000,
+                    },
+                     safetySettings: [ // Example safety settings (adjust as needed)
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                    ]
+                };
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: historyForAPI }),
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
                 });
 
-                showTypingIndicator(false);
-
-                let errorHandled = false; // Flag to prevent double error logging/display
+                hideTypingIndicator(); // Hide indicator once response starts processing
 
                 if (!response.ok) {
-                    let errorData, errorMessage = `API Error: ${response.status} ${response.statusText}`;
-                    try {
-                        errorData = await response.json();
-                        console.error("API Error Detail:", errorData);
-                        errorMessage = errorData?.error?.message || errorMessage;
-                    } catch (e) { /* Ignore JSON parsing error if response is not JSON */ }
-                    displayMessage(`Error: ${errorMessage}`, 'error');
-                    // Log error to history as well
-                     chatHistory.push({ role: 'error', parts: [{ text: `Error: ${errorMessage}` }], timestamp: getCurrentTime() });
-                    errorHandled = true; // Mark as handled
-                } else {
-                    const data = await response.json();
-                    console.log("API Success:", data);
-
-                    if (data?.promptFeedback?.blockReason) {
-                        const blockMessage = `Blocked: ${data.promptFeedback.blockReason}`;
-                        displayMessage(blockMessage, 'error');
-                         chatHistory.push({ role: 'error', parts: [{ text: blockMessage }], timestamp: getCurrentTime() });
-                        errorHandled = true; // Mark as handled
-                    } else {
-                        const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (!aiText) {
-                            const noRespMsg = "Error: Received no valid response text from AI.";
-                            displayMessage(noRespMsg, 'error');
-                             chatHistory.push({ role: 'error', parts: [{ text: noRespMsg }], timestamp: getCurrentTime() });
-                            errorHandled = true; // Mark as handled
-                        } else {
-                            // SUCCESS CASE
-                            const aiTimestamp = getCurrentTime();
-                            const aiMessageObject = { role: "model", parts: [{ text: aiText }], timestamp: aiTimestamp };
-                            chatHistory.push(aiMessageObject); // Add successful AI response to history
-                            displayMessage(aiText, 'ai', true, aiTimestamp);
-                        }
-                    }
+                     const errorData = await response.json();
+                     console.error("API Error Response:", errorData);
+                    throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorData?.error?.message || 'Unknown error'}`);
                 }
-                // Save history after successful response or handled error
-                 if (!errorHandled || errorHandled) { // Save history in both success and handled error cases
-                     saveChatHistory();
+
+                const data = await response.json();
+
+                // console.log("API Success Response:", data); // Log successful response
+
+                let aiText = "Sorry, I couldn't process that response."; // Default message
+                let isMarkdownResponse = false;
+
+                // Extract text safely
+                 if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
+                    aiText = data.candidates[0].content.parts[0].text;
+                    isMarkdownResponse = true; // Assume Gemini responses are Markdown
+
+                     // Add AI response to history
+                    conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
+
+                 } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+                     aiText = `Blocked: ${data.promptFeedback.blockReason}. ${data.promptFeedback.safetyRatings?.map(r => `${r.category}: ${r.probability}`).join(', ') || ''}`;
+                     console.warn("Content blocked by safety settings:", data.promptFeedback);
+                     // Don't add blocked responses to history as 'model' response for next turn
+                 } else {
+                      console.error("Unexpected API response structure:", data);
+                      aiText = "Received an unexpected response structure from the AI.";
+                      // Potentially clear last user message from history if AI failed completely
+                      // conversationHistory.pop();
                  }
 
+
+                displayMessage(aiText, 'ai', isMarkdownResponse);
+
             } catch (error) {
-                // Catch unexpected JS errors (e.g., network offline before fetch)
-                console.error("AI Interaction JS Error:", error);
-                showTypingIndicator(false);
-                const jsErrorMsg = `Error: ${error.message || 'An unexpected network or script error occurred.'}`;
-                displayMessage(jsErrorMsg, 'error');
-                 // Log JS error to history
-                 chatHistory.push({ role: 'error', parts: [{ text: jsErrorMsg }], timestamp: getCurrentTime() });
-                 saveChatHistory(); // Save history even after JS error
+                console.error('Error sending message:', error);
+                hideTypingIndicator(); // Ensure indicator is hidden on error
+                displayMessage(`Error: ${error.message}`, 'ai', false); // Display error in chat
+                 // Maybe remove the last user message from history if the API call failed entirely
+                 // conversationHistory.pop();
             } finally {
-                setInputActive(true); // Always re-enable input
-                messageInput.focus(); // Keep focus on input
+                // Re-enable input and button
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                userInput.focus(); // Set focus back to input
             }
-        }
-
-
-        function handleSendMessage(event) {
-            event.preventDefault();
-            if (isAIGenerating) return; // Prevent sending while AI is thinking
-            const message = messageInput.value.trim();
-            if (message) {
-                const userTimestamp = getCurrentTime();
-                 // 1. Add user message to history *before* displaying
-                 const userMessageObject = { role: "user", parts: [{ text: message }], timestamp: userTimestamp };
-                 chatHistory.push(userMessageObject);
-                 // 2. Display the user message (it will scroll)
-                displayMessage(message, 'user', true, userTimestamp);
-                 // 3. Clear input
-                messageInput.value = '';
-                 // 4. Call AI (which uses the updated chatHistory)
-                getAIResponse(message); // Pass the message text directly
-                // 5. Save history is handled within getAIResponse success/error/finally blocks
-            }
-        }
-
-
-        function clearChat() {
-            if (isAIGenerating) {
-                 // Maybe provide non-alert feedback?
-                 // console.warn("Cannot clear chat while AI is responding.");
-                 // Optionally disable the clear button when isAIGenerating is true
-                 return;
-             }
-
-            // Clear visual chat area completely
-            const messages = chatArea.querySelectorAll('.message-card:not(#typing-indicator)');
-            messages.forEach(msg => msg.remove());
-
-             // Clear data
-            chatHistory = [];
-            sessionStorage.removeItem(CHAT_HISTORY_KEY);
-
-            // Reset UI elements
-            setInputActive(true);
-            messageInput.value = ''; // Clear input field too
-            console.log("Chat cleared.");
-            // No need to add welcome message
-            // Scroll to top might be desirable after clearing
-            chatArea.scrollTop = 0;
         }
 
         // --- Event Listeners ---
-        messageForm.addEventListener('submit', handleSendMessage);
-        clearChatButton.addEventListener('click', clearChat);
-
-        // Optional: Re-focus input when window gains focus (useful on mobile)
-        window.addEventListener('focus', () => {
-           // Avoid focusing if AI is thinking or input is disabled for other reasons
-            if (!messageInput.disabled) {
-                 // Small delay might be needed on some browsers
-                 setTimeout(() => messageInput.focus(), 100);
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (event) => {
+            // Send message on Enter key press (but not Shift+Enter for new lines in textarea)
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault(); // Prevent default Enter behavior (new line)
+                sendMessage();
             }
         });
 
+        // Initial focus on input
+        userInput.focus();
 
-    }); // End DOMContentLoaded
-</script>
+    </script>
+
 </body>
 </html>
