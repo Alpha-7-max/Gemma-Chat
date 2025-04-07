@@ -2,433 +2,795 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Dost (Context Aware)</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Marked.js for Markdown Rendering -->
+    <!-- Font Awesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Marked.js CDN for Markdown Rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- DOMPurify for sanitizing HTML output from Marked.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/2.3.4/purify.min.js"></script>
-    <style>
-        /* Custom CSS for scrollbar and potentially other elements */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1; /* cool-gray-300 */
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8; /* cool-gray-400 */
-        }
+     <!-- Highlight.js (Optional, for Code Block Syntax Highlighting) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-        /* Ensure full height on mobile and constrain on desktop */
-        body {
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #e5e7eb; /* bg-gray-200 */
+    <style>
+        /* Custom Styles */
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent bouncing on mobile */
+            background-color: #f0f4f8; /* Light background for the whole page */
+            -webkit-tap-highlight-color: transparent; /* Prevent gray highlight on tap */
         }
 
         #chat-container {
-            height: 100%;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            background-color: white;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-xl */
+            scrollbar-width: thin; /* Firefox */
+            scrollbar-color: #9ca3af #f0f4f8; /* Firefox - thumb track */
         }
 
-        @media (min-width: 768px) { /* md breakpoint */
-            #chat-container {
-                max-height: 85vh;
-                max-width: 450px; /* Simulates mobile width */
-                border-radius: 1.5rem; /* rounded-2xl */
-                overflow: hidden;
-            }
+        /* Webkit scrollbar styling */
+        #chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-container::-webkit-scrollbar-track {
+            background: #f0f4f8;
+            border-radius: 3px;
+        }
+        #chat-container::-webkit-scrollbar-thumb {
+            background-color: #9ca3af;
+            border-radius: 3px;
+            border: 1px solid #f0f4f8;
         }
 
-        /* Custom styling for Markdown elements */
-        .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+        /* Style Markdown elements */
+        .ai-message-content h1,
+        .ai-message-content h2,
+        .ai-message-content h3,
+        .ai-message-content h4,
+        .ai-message-content h5,
+        .ai-message-content h6 {
             font-weight: 600;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
+            margin-top: 0.8em;
+            margin-bottom: 0.4em;
+            line-height: 1.3;
+            color: #1f2937; /* Darker heading color */
         }
-        .markdown-content h1 { font-size: 1.5em; }
-        .markdown-content h2 { font-size: 1.25em; }
-        .markdown-content h3 { font-size: 1.1em; }
-        .markdown-content ul, .markdown-content ol {
-            margin-left: 1.5rem;
-            margin-top: 0.5rem;
-            margin-bottom: 0.5rem;
+        .ai-message-content h1 { font-size: 1.5em; border-bottom: 1px solid #e5e8eb; padding-bottom: 0.3em;}
+        .ai-message-content h2 { font-size: 1.3em; border-bottom: 1px solid #e5e8eb; padding-bottom: 0.2em;}
+        .ai-message-content h3 { font-size: 1.15em; }
+        .ai-message-content p {
+            margin-bottom: 0.8em;
+            line-height: 1.6;
+            color: #374151; /* Slightly darker text */
         }
-        .markdown-content ul { list-style-type: disc; }
-        .markdown-content ol { list-style-type: decimal; }
-        .markdown-content li { margin-bottom: 0.25rem; }
-        .markdown-content p { margin-bottom: 0.75rem; line-height: 1.6; }
-        .markdown-content code {
-            background-color: #e5e8eb; /* Light gray bg */
-            padding: 0.15rem 0.4rem;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.9em;
+        .ai-message-content ul,
+        .ai-message-content ol {
+            margin-left: 1.5em;
+            margin-bottom: 0.8em;
+            list-style: revert; /* Use browser default list styles */
         }
-        .markdown-content pre {
-            background-color: #1f2937; /* gray-800 */
-            color: #f3f4f6; /* gray-100 */
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 0.5rem;
-            margin-bottom: 1rem;
-            overflow-x: auto;
-            font-family: monospace;
-            font-size: 0.9em;
-        }
-         .markdown-content pre code {
-            background-color: transparent;
-            padding: 0;
-            color: inherit;
-         }
-        .markdown-content table {
-            width: 100%;
+        .ai-message-content ul { list-style-type: disc; }
+        .ai-message-content ol { list-style-type: decimal; }
+        .ai-message-content li { margin-bottom: 0.3em; color: #4b5563; }
+        .ai-message-content li::marker { color: #9ca3af; } /* Style list bullets/numbers */
+
+
+        .ai-message-content table {
             border-collapse: collapse;
-            margin-top: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid #e5e8eb; /* border-[#E5E8EB] */
+            margin-bottom: 1em;
+            width: auto;
+            max-width: 100%;
+            border: 1px solid #d1d5db; /* Slightly darker table border */
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+            overflow: hidden; /* Ensure rounded corners apply */
+            border-radius: 0.375rem; /* rounded-md */
         }
-        .markdown-content th, .markdown-content td {
-            border: 1px solid #e5e8eb; /* border-[#E5E8EB] */
-            padding: 0.5rem 0.75rem;
+        .ai-message-content th,
+        .ai-message-content td {
+            border: 1px solid #e5e8eb;
+            padding: 0.6em 0.8em; /* Slightly more padding */
             text-align: left;
+            font-size: 0.9em;
+            line-height: 1.4;
         }
-        .markdown-content th {
-            background-color: #f9f9fa; /* bg-[#F9F9FA] */
+         .ai-message-content th {
+            background-color: #f9fafb;
             font-weight: 600;
+            color: #374151;
+            border-bottom-width: 2px;
+            border-bottom-color: #d1d5db;
+         }
+         .ai-message-content td {
+             background-color: #ffffff;
+             color: #4b5563;
+             border-top: none; /* Avoid double borders */
+         }
+         .ai-message-content tr:nth-child(even) td {
+            background-color: #f9fafb; /* Subtle row striping */
+         }
+        .ai-message-content pre {
+            /* Using highlight.js theme styles now */
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1em;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.875em;
+            line-height: 1.5;
+             padding: 1em; /* Ensure padding is consistent */
+             position: relative; /* For copy button positioning */
         }
-        .markdown-content blockquote {
-            border-left: 4px solid #cbd5e1; /* cool-gray-300 */
-            padding-left: 1rem;
+         /* Ensure code inside pre matches hljs style */
+         .ai-message-content pre code.hljs {
+             display: block;
+             overflow-x: auto;
+             padding: 0; /* Padding is on the pre */
+             background: none; /* Background is on the pre via theme */
+             color: inherit; /* Inherit color from theme */
+             font-size: inherit;
+             border-radius: 0;
+         }
+         /* Style for inline code */
+        .ai-message-content code:not(pre > code) {
+            background-color: #e5e7eb;
+            color: #374151;
+            padding: 0.2em 0.4em;
+            border-radius: 0.25rem;
+            font-size: 0.9em;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            word-break: break-word;
+        }
+        .ai-message-content blockquote {
+            border-left: 4px solid #9ca3af;
+            padding-left: 1em;
             margin-left: 0;
-            margin-top: 0.5rem;
-            margin-bottom: 0.5rem;
-            color: #6b7280; /* gray-500 */
+            margin-bottom: 1em;
+            color: #6b7280;
             font-style: italic;
+            background-color: #f9fafb; /* Slight background for blockquote */
+            padding-top: 0.5em;
+            padding-bottom: 0.5em;
+            border-radius: 0 0.25rem 0.25rem 0; /* Rounded corners on right */
         }
-        .markdown-content a {
-            color: var(--color-primary, #4f46e5);
+        .ai-message-content a {
+            color: #2563eb;
             text-decoration: underline;
+            text-decoration-thickness: 1px;
+            text-underline-offset: 2px;
         }
-        .markdown-content a:hover {
-            color: #3730a3; /* Darker primary */
+        .ai-message-content a:hover {
+            color: #1d4ed8;
+            text-decoration-thickness: 2px;
+        }
+        .ai-message-content strong, .ai-message-content b {
+            font-weight: 600;
+            color: #1f2937;
+        }
+        .ai-message-content em, .ai-message-content i {
+            font-style: italic;
+            color: #374151;
+        }
+        /* Copy Code Button */
+        .copy-code-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #4b5563; /* Darker gray */
+            color: #f3f4f6; /* Light text */
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.2s ease, background-color 0.2s ease;
+        }
+        .copy-code-button:hover {
+            opacity: 1;
+            background-color: #374151; /* Slightly darker on hover */
+        }
+         .copy-code-button.copied {
+             background-color: #10b981; /* Emerald green */
+             color: white;
+         }
+
+
+        /* Define primary color variable */
+        :root {
+            --color-primary: 59 130 246; /* Tailwind blue-500 RGB values */
+            --color-primary-hex: #3b82f6;
         }
 
-        /* Typing indicator styles */
-        .typing-indicator span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background-color: #9ca3af; /* gray-400 */
-            margin: 0 2px;
-            animation: typing 1s infinite ease-in-out;
+        /* User message card styles */
+        .user-message-card {
+            background-color: rgba(var(--color-primary), 0.07); /* Slightly more visible */
+            border: 1px solid rgba(var(--color-primary), 0.15);
+            box-shadow: 0 1px 2px 0 rgba(var(--color-primary), 0.05);
         }
-        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.1s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.2s; }
-
-        @keyframes typing {
-            0%, 100% { opacity: 0.3; transform: translateY(0); }
-            50% { opacity: 1; transform: translateY(-3px); }
+        .user-icon-bg {
+            background-color: rgba(var(--color-primary), 0.1);
+        }
+        .user-icon-color {
+            color: var(--color-primary-hex);
         }
 
-        /* Prevent textarea resize handle */
-        #userInput {
-            resize: none;
-            height: 44px; /* Initial height for one line + padding */
-            max-height: 150px; /* Max height before scrolling */
-            overflow-y: auto; /* Add scroll when content exceeds max-height */
+        /* AI message card styles */
+        .ai-message-card {
+            background-color: #ffffff; /* Pure white for AI messages */
+            border: 1px solid #e5e8eb;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
         }
+        .ai-icon-bg {
+             background-color: #f9fafb; /* Light gray for AI icon bg */
+             border: 1px solid #e5e8eb;
+        }
+        .ai-icon-color {
+             color: #4b5563;
+        }
+
+
+        /* Typing indicator animation */
+         @keyframes bounce {
+             0%, 80%, 100% { transform: scale(0); }
+             40% { transform: scale(1.0); }
+         }
+         .animate-bounce {
+             animation: bounce 1.4s infinite ease-in-out both;
+         }
+
+
+        /* Prevent input zoom on focus in iOS */
+        input[type="text"] {
+            font-size: 16px !important;
+        }
+
+        /* Style for the clear history button */
+        #clear-history-button {
+             position: absolute;
+             top: 50%;
+             transform: translateY(-50%);
+             right: 12px;
+             background: none;
+             border: none;
+             color: #9ca3af; /* Lighter gray */
+             cursor: pointer;
+             padding: 8px;
+             border-radius: 50%;
+             transition: color 0.2s ease, background-color 0.2s ease;
+        }
+        #clear-history-button:hover {
+             color: #dc2626; /* Red on hover */
+             background-color: #fee2e2; /* Light red background */
+        }
+
+
     </style>
-    <script>
-        // Setup Tailwind CSS primary color variable
-        tailwind.config = {
-          theme: {
-            extend: {
-              colors: {
-                primary: {
-                  DEFAULT: '#6366F1', // Indigo-500
-                  '5': 'rgba(99, 102, 241, 0.05)', // Light shade for bg
-                  '10': 'rgba(99, 102, 241, 0.1)', // Light shade for border/icon bg
-                },
-                foreground: '#111827', // gray-900 (Default text color)
-              }
-            }
-          }
-        }
-        // Define CSS variable for use in custom CSS if needed
-        document.documentElement.style.setProperty('--color-primary', '#6366F1');
-    </script>
 </head>
-<body class="bg-gray-200">
+<body class="flex flex-col h-screen antialiased font-sans">
 
-    <div id="chat-container" class="bg-white shadow-xl flex flex-col">
-
-        <!-- Header -->
-        <header class="bg-primary text-white p-4 flex items-center justify-between shadow-md z-10 flex-shrink-0">
-            <h1 class="text-lg font-semibold">Gemini Chat</h1>
-             <!-- Placeholder for potential future icons/buttons -->
-             <div></div>
-        </header>
-
-        <!-- Chat Messages Area -->
-        <div id="chatbox" class="flex-grow overflow-y-auto p-4 space-y-4 bg-white">
-            <!-- Initial AI message -->
-            <div class="flex items-start gap-3 message-ai">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] border border-[#E5E8EB] flex items-center justify-center">
-                    <!-- AI Icon (Simple Bot) -->
-                    <svg class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
-                    </svg>
-                </div>
-                <div class="text-sm text-gray-800 bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-[80%] shadow-sm">
-                    <p>Hello! How can I help you today?</p>
-                </div>
-            </div>
-            <!-- Messages will be appended here -->
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-10 flex items-center justify-center h-16 relative border-b border-gray-200">
+        <div class="flex items-center">
+            <i class="fas fa-robot mr-2 text-[var(--color-primary-hex)] text-xl"></i>
+            <h1 class="text-lg font-semibold text-gray-800">AI Dost</h1>
         </div>
+        <!-- Clear History Button -->
+        <button id="clear-history-button" title="Clear Chat History" aria-label="Clear chat history">
+            <i class="fas fa-trash-alt text-lg"></i>
+        </button>
+    </header>
 
-        <!-- Typing Indicator Placeholder -->
-        <div id="typing-indicator-container" class="hidden p-4 pt-0">
-             <div class="flex items-start gap-3 message-ai">
-                <div class="flex-shrink-0 w-8 h-8 rounded-full bg-[#F9F9FA] border border-[#E5E8EB] flex items-center justify-center">
-                    <svg class="w-5 h-5 text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
-                    </svg>
-                </div>
-                <div class="text-sm text-gray-800 bg-[#F9F9FA] border border-[#E5E8EB] rounded-lg rounded-tl-none p-3 max-w-[80%] shadow-sm flex items-center">
-                     <div class="typing-indicator">
-                        <span></span><span></span><span></span>
-                    </div>
-                </div>
-            </div>
+    <!-- Chat Container -->
+    <main id="chat-container" class="flex-grow overflow-y-auto p-4 space-y-4 bg-[#F0F4F8]">
+        <!-- Messages will be appended here -->
+        <div id="loading-placeholder" class="text-center text-gray-500 text-sm py-4 hidden">
+            Purani chat load ho rahi hai...
         </div>
+    </main>
 
-        <!-- Input Area -->
-        <footer class="bg-white border-t border-gray-200 p-3 sm:p-4 flex items-end gap-2 flex-shrink-0">
-            <textarea
-                id="userInput"
-                rows="1"
-                placeholder="Type your message..."
-                class="flex-grow px-4 py-2 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-shadow duration-150"
-            ></textarea>
-            <button id="sendButton" class="bg-primary text-white rounded-full p-2.5 flex-shrink-0 h-[44px] w-[44px] flex items-center justify-center hover:bg-indigo-700 active:bg-indigo-800 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed">
-                <!-- Send Icon -->
-                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                </svg>
+    <!-- Typing Indicator -->
+     <div id="typing-indicator" class="p-4 hidden">
+         <div class="flex items-start gap-3 max-w-[85%] self-start">
+             <div class="ai-icon-bg p-2 rounded-full flex-shrink-0 shadow-sm flex items-center justify-center w-9 h-9">
+                 <i class="fas fa-robot w-4 h-4 ai-icon-color"></i>
+             </div>
+             <div class="ai-message-card rounded-lg px-4 py-3 shadow-sm flex items-center space-x-1.5"> <!-- Adjusted padding -->
+                 <span class="typing-dot block w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: -0.32s;"></span>
+                 <span class="typing-dot block w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: -0.16s;"></span>
+                 <span class="typing-dot block w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+             </div>
+         </div>
+     </div>
+
+
+    <!-- Input Area -->
+    <footer class="bg-white p-3 sticky bottom-0 border-t border-gray-200 shadow-inner">
+        <form id="chat-form" class="max-w-md mx-auto flex items-center gap-2">
+            <input
+                type="text"
+                id="message-input"
+                placeholder="Yahan likhain..."
+                autocomplete="off"
+                class="flex-grow p-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-[color:var(--color-primary-hex)]/40 focus:border-transparent text-sm transition duration-200 h-12"
+                aria-label="Chat message input"
+            />
+            <button
+                type="submit"
+                id="send-button"
+                class="bg-[var(--color-primary-hex)] text-white rounded-full p-3 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[color:var(--color-primary-hex)] transition duration-200 flex-shrink-0 w-12 h-12 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Send message"
+            >
+                <i class="fas fa-paper-plane text-lg"></i>
             </button>
-        </footer>
-    </div>
+        </form>
+    </footer>
 
+    <!-- *************************************************** -->
+    <!-- IMPORTANT: JavaScript is now placed AT THE END -->
+    <!-- *************************************************** -->
     <script>
-        const chatbox = document.getElementById('chatbox');
-        const userInput = document.getElementById('userInput');
-        const sendButton = document.getElementById('sendButton');
-        const typingIndicator = document.getElementById('typing-indicator-container');
+        // --- DOM Element References ---
+        // It's good practice to get references *after* the DOM is loaded
+        let chatContainer, chatForm, messageInput, sendButton, typingIndicator, clearHistoryButton, loadingPlaceholder;
 
-        // WARNING: Storing API keys client-side is insecure. This is for demonstration purposes only.
-        // In a real application, this should be handled via a backend proxy.
-        const API_KEY = 'AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74'; // USE YOUR KEY HERE
-        const MODEL_NAME = 'gemini-1.0-pro-latest'; // Changed model name based on common availability, adjust if needed
+        // --- Gemini API Configuration ---
+        // ⚠️ WARNING: Exposing API keys client-side is a MAJOR security risk. ⚠️
+        // This key WILL BE VISIBLE to anyone inspecting your web page source.
+        // For production applications, always use a backend proxy server to handle API calls.
+        // This is for DEMONSTRATION PURPOSES ONLY.
+        const API_KEY = 'AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74'; // USE WITH EXTREME CAUTION!
+        const MODEL_NAME = 'gemma-3-27b-it';
         const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
 
-        let conversationHistory = []; // Store conversation context
+        // --- LocalStorage Configuration ---
+        const CHAT_HISTORY_KEY = 'aiDostChatHistory';
 
-        // Function to auto-adjust textarea height
-        function autoAdjustTextareaHeight() {
-            userInput.style.height = 'auto'; // Reset height
-            let newHeight = userInput.scrollHeight;
-            // Clamp height between initial (44px) and max (150px)
-            newHeight = Math.max(44, Math.min(newHeight, 150));
-            userInput.style.height = `${newHeight}px`;
-        }
+        // --- History for context ---
+        let conversationHistory = []; // Format: [{ role: "user" / "model", parts: [{ text: "..." }] }]
 
-        userInput.addEventListener('input', autoAdjustTextareaHeight);
-
-        // --- Message Display Function ---
-        function displayMessage(text, sender, isMarkdown = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.classList.add('flex', 'items-start', 'gap-3', `message-${sender}`);
-
-            const iconContainer = document.createElement('div');
-            iconContainer.classList.add('flex-shrink-0', 'w-8', 'h-8', 'rounded-full', 'flex', 'items-center', 'justify-center');
-
-            const bubble = document.createElement('div');
-            bubble.classList.add('text-sm', 'rounded-lg', 'p-3', 'max-w-[80%]', 'shadow-sm', 'overflow-hidden'); // Added overflow-hidden
-
-            if (sender === 'user') {
-                messageDiv.classList.add('justify-end');
-                iconContainer.classList.add('bg-primary/10', 'text-primary', 'order-2');
-                bubble.classList.add('bg-primary/5', 'border', 'border-primary/10', 'text-gray-800', 'rounded-br-none', 'order-1');
-                // User Icon (Simple Person)
-                iconContainer.innerHTML = `
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                      <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
-                    </svg>`;
-                bubble.textContent = text; // Use textContent for user input (safer)
-
-            } else { // AI message
-                messageDiv.classList.add('justify-start');
-                iconContainer.classList.add('bg-[#F9F9FA]', 'text-foreground', 'border', 'border-[#E5E8EB]', 'order-1');
-                bubble.classList.add('bg-[#F9F9FA]', 'border', 'border-[#E5E8EB]', 'text-gray-800', 'rounded-tl-none', 'order-2', 'markdown-content');
-                // AI Icon (Simple Bot)
-                iconContainer.innerHTML = `
-                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 3v1.5M4.5 8.25H3m18 0h-1.5M4.5 12H3m18 0h-1.5m-15 3.75H3m18 0h-1.5M8.25 19.5V21M12 3v1.5m0 15V21m3.75-18v1.5m0 15V21m-9-1.5h10.5a2.25 2.25 0 0 0 2.25-2.25V6.75a2.25 2.25 0 0 0-2.25-2.25H6.75A2.25 2.25 0 0 0 4.5 6.75v10.5a2.25 2.25 0 0 0 2.25 2.25Zm.75-12h9v9h-9v-9Z" />
-                    </svg>`;
-
-                if (isMarkdown) {
-                    // Render Markdown and sanitize
-                    const rawHtml = marked.parse(text);
-                    const cleanHtml = DOMPurify.sanitize(rawHtml);
-                    bubble.innerHTML = cleanHtml;
-                } else {
-                     bubble.textContent = text; // Fallback for non-markdown or errors
-                }
-            }
-
-            messageDiv.appendChild(iconContainer);
-            messageDiv.appendChild(bubble);
-            chatbox.appendChild(messageDiv);
-
-            // Scroll to bottom
-            chatbox.scrollTop = chatbox.scrollHeight;
-        }
-
-        // --- Show/Hide Typing Indicator ---
-        function showTypingIndicator() {
-            typingIndicator.classList.remove('hidden');
-            chatbox.scrollTop = chatbox.scrollHeight; // Scroll down to show indicator
-        }
-
-        function hideTypingIndicator() {
-            typingIndicator.classList.add('hidden');
-        }
-
-        // --- Send Message Function ---
-        async function sendMessage() {
-            const userText = userInput.value.trim();
-            if (!userText) return;
-
-            // Disable input and button
-            userInput.disabled = true;
-            sendButton.disabled = true;
-
-            // Display user message
-            displayMessage(userText, 'user');
-             // Add user message to history
-            conversationHistory.push({ role: "user", parts: [{ text: userText }] });
-
-            // Clear input and reset height
-            userInput.value = '';
-            autoAdjustTextareaHeight();
-
-            // Show typing indicator
-            showTypingIndicator();
-
-
+        // --- Function to Save History to LocalStorage ---
+        function saveHistoryToLocalStorage() {
             try {
-                const payload = {
-                    contents: conversationHistory, // Send the entire history
-                     generationConfig: {
-                        // Add configuration if needed, e.g., temperature, maxOutputTokens
-                        // "temperature": 0.7,
-                        // "maxOutputTokens": 1000,
-                    },
-                     safetySettings: [ // Example safety settings (adjust as needed)
-                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                    ]
-                };
+                // Limit history size to prevent excessive localStorage usage (e.g., last 50 messages)
+                const historyToSave = conversationHistory.slice(-50); // Keep last 50 turns
+                const historyString = JSON.stringify(historyToSave);
+                localStorage.setItem(CHAT_HISTORY_KEY, historyString);
+            } catch (error) {
+                console.error("Error saving chat history to localStorage:", error);
+                 // Display a non-intrusive error in console, maybe disable clear history button if storage fails?
+            }
+        }
 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload),
+         // --- Function to Add Copy Button Functionality ---
+         function addCopyCodeFunctionality() {
+            const codeBlocks = chatContainer.querySelectorAll('pre');
+            codeBlocks.forEach(block => {
+                // Prevent adding multiple buttons if function is called again
+                if (block.querySelector('.copy-code-button')) {
+                    return;
+                }
+
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-code-button';
+                copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                copyButton.setAttribute('aria-label', 'Copy code to clipboard');
+
+                // Find the <code> element inside the <pre>
+                 const codeElement = block.querySelector('code');
+                 const codeToCopy = codeElement ? codeElement.textContent : block.textContent;
+
+
+                copyButton.addEventListener('click', () => {
+                    navigator.clipboard.writeText(codeToCopy).then(() => {
+                        copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        copyButton.classList.add('copied');
+                        setTimeout(() => {
+                            copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                            copyButton.classList.remove('copied');
+                        }, 2000); // Reset after 2 seconds
+                    }).catch(err => {
+                        console.error('Failed to copy code: ', err);
+                         copyButton.textContent = 'Error';
+                         setTimeout(() => {
+                            copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                         }, 2000);
+                    });
                 });
 
-                hideTypingIndicator(); // Hide indicator once response starts processing
+                block.appendChild(copyButton);
+            });
+        }
 
-                if (!response.ok) {
-                     const errorData = await response.json();
-                     console.error("API Error Response:", errorData);
-                    throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorData?.error?.message || 'Unknown error'}`);
+        // --- Function to Load History from LocalStorage ---
+        function loadHistoryFromLocalStorage() {
+            if (!loadingPlaceholder || !chatContainer) return; // Ensure elements exist
+
+            loadingPlaceholder.classList.remove('hidden');
+            chatContainer.innerHTML = ''; // Clear current chat view first
+
+            try {
+                const storedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
+                if (storedHistory) {
+                    const parsedHistory = JSON.parse(storedHistory);
+                    if (Array.isArray(parsedHistory)) {
+                        conversationHistory = parsedHistory;
+                        conversationHistory.forEach(message => {
+                            if (message.role === 'user') {
+                                displayUserMessage(message.parts[0].text, false);
+                            } else if (message.role === 'model') {
+                                displayAIMessage(message.parts[0].text, false);
+                            }
+                        });
+
+                        if (conversationHistory.length === 0) {
+                            addInitialGreeting();
+                        }
+
+                    } else {
+                        console.warn("Invalid history format. Starting fresh.");
+                        localStorage.removeItem(CHAT_HISTORY_KEY);
+                        conversationHistory = [];
+                        addInitialGreeting();
+                    }
+                } else {
+                    addInitialGreeting();
                 }
-
-                const data = await response.json();
-
-                // console.log("API Success Response:", data); // Log successful response
-
-                let aiText = "Sorry, I couldn't process that response."; // Default message
-                let isMarkdownResponse = false;
-
-                // Extract text safely
-                 if (data.candidates && data.candidates.length > 0 && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts.length > 0) {
-                    aiText = data.candidates[0].content.parts[0].text;
-                    isMarkdownResponse = true; // Assume Gemini responses are Markdown
-
-                     // Add AI response to history
-                    conversationHistory.push({ role: "model", parts: [{ text: aiText }] });
-
-                 } else if (data.promptFeedback && data.promptFeedback.blockReason) {
-                     aiText = `Blocked: ${data.promptFeedback.blockReason}. ${data.promptFeedback.safetyRatings?.map(r => `${r.category}: ${r.probability}`).join(', ') || ''}`;
-                     console.warn("Content blocked by safety settings:", data.promptFeedback);
-                     // Don't add blocked responses to history as 'model' response for next turn
-                 } else {
-                      console.error("Unexpected API response structure:", data);
-                      aiText = "Received an unexpected response structure from the AI.";
-                      // Potentially clear last user message from history if AI failed completely
-                      // conversationHistory.pop();
-                 }
-
-
-                displayMessage(aiText, 'ai', isMarkdownResponse);
-
             } catch (error) {
-                console.error('Error sending message:', error);
-                hideTypingIndicator(); // Ensure indicator is hidden on error
-                displayMessage(`Error: ${error.message}`, 'ai', false); // Display error in chat
-                 // Maybe remove the last user message from history if the API call failed entirely
-                 // conversationHistory.pop();
+                console.error("Error loading/parsing history:", error);
+                 localStorage.removeItem(CHAT_HISTORY_KEY);
+                 conversationHistory = [];
+                 addInitialGreeting();
             } finally {
-                // Re-enable input and button
-                userInput.disabled = false;
-                sendButton.disabled = false;
-                userInput.focus(); // Set focus back to input
+                loadingPlaceholder.classList.add('hidden');
+                 addCopyCodeFunctionality(); // Add copy buttons to loaded code blocks
+                 scrollToBottom(true); // Scroll after loading, instantly
             }
         }
 
-        // --- Event Listeners ---
-        sendButton.addEventListener('click', sendMessage);
-        userInput.addEventListener('keypress', (event) => {
-            // Send message on Enter key press (but not Shift+Enter for new lines in textarea)
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault(); // Prevent default Enter behavior (new line)
-                sendMessage();
-            }
-        });
+         // --- Function to add the initial AI greeting ---
+         function addInitialGreeting() {
+             const initialMessageText = "Assalam-o-Alaikum! Mein AI Dost hoon. Kaisi madad kar sakta hoon aaj? Sawal poochen ya bas baat cheet karein. 😊";
+             if (conversationHistory.length === 0) { // Ensure it's only added if history is truly empty
+                 conversationHistory.push({ role: "model", parts: [{ text: initialMessageText }] });
+                 displayAIMessage(initialMessageText, false);
+                 saveHistoryToLocalStorage(); // Save the initial state
+             }
+         }
 
-        // Initial focus on input
-        userInput.focus();
+
+        // --- Event Listener for Form Submission ---
+        function handleFormSubmit(e) {
+            try {
+                 // ** CRITICAL: Prevent the default form submission **
+                 e.preventDefault();
+
+                 const userMessage = messageInput.value.trim();
+                 if (!userMessage) return; // Do nothing if input is empty
+
+                 // Disable input/button immediately
+                 messageInput.disabled = true;
+                 sendButton.disabled = true;
+
+                 // Display user message & add to history
+                 displayUserMessage(userMessage, true); // true = add to live history and save
+                 messageInput.value = ''; // Clear input field
+
+                 // Show typing indicator
+                 showTypingIndicator(true);
+                 scrollToBottom(); // Scroll after showing user message + indicator
+
+                 // --- Call API (async operation) ---
+                 // Use .then/.catch or async/await inside a separate async function
+                 fetchAIResponseAndDisplay().catch(error => {
+                    // Catch errors from the async fetch/display process
+                    console.error("Error in fetchAIResponseAndDisplay:", error);
+                    showTypingIndicator(false);
+                    // Display a user-friendly error message (don't save error to history)
+                    displayAIMessage(`Maa'zarat! API call mein kuch masla ho gaya hai. 😕 Connection check karein ya baad mein try karein. [Error: ${error.message || 'Unknown API Error'}]`, false);
+                 }).finally(() => {
+                    // Re-enable input/button regardless of success or failure
+                    messageInput.disabled = false;
+                    sendButton.disabled = false;
+                    messageInput.focus(); // Keep focus on input
+                    scrollToBottom(); // Ensure scroll is correct after potential error message
+                 });
+
+            } catch (error) {
+                // Catch synchronous errors that might happen BEFORE the async part
+                console.error("Synchronous error in submit handler:", error);
+                // Maybe display a generic error or re-enable form fields if needed
+                 showTypingIndicator(false);
+                 displayAIMessage(`Oops! Form submit karne mein kuch problem hui. Page refresh karke try karein? [Error: ${error.message}]`, false);
+                 // Re-enable form fields here too as a fallback
+                 messageInput.disabled = false;
+                 sendButton.disabled = false;
+                 messageInput.focus();
+            }
+        }
+
+         // --- Separate Async Function for API Call and Display ---
+         async function fetchAIResponseAndDisplay() {
+             const aiResponse = await getAIResponse(); // Fetches from Gemini
+
+             // Add AI response to history *before* displaying
+             conversationHistory.push({ role: "model", parts: [{ text: aiResponse }] });
+             saveHistoryToLocalStorage(); // Save history *after* getting AI response
+
+             // Remove typing indicator and display AI message
+             showTypingIndicator(false);
+             displayAIMessage(aiResponse, false); // false = already added to history
+             addCopyCodeFunctionality(); // Add copy button to new code blocks
+             scrollToBottom(); // Scroll after AI response is added
+         }
+
+
+        // --- Event Listener for Clear History Button ---
+        function handleClearHistory() {
+             if (confirm("Kya aap waqai poori chat history clear karna chahte hain? Yeh wapas nahi aa sakti.")) {
+                 localStorage.removeItem(CHAT_HISTORY_KEY);
+                 conversationHistory = [];
+                 if(chatContainer) chatContainer.innerHTML = ''; // Clear the UI
+                 addInitialGreeting(); // Add the initial greeting back
+                 if(messageInput) messageInput.focus();
+             }
+        }
+
+
+         // --- Functions to Display Messages ---
+        function displayUserMessage(message, addToHistoryAndSave = true) {
+            if (!chatContainer) return;
+            const messageElement = document.createElement('div');
+            messageElement.className = 'flex justify-end group animate-fade-in'; // Added simple fade-in
+
+            const textContent = document.createTextNode(message);
+
+             messageElement.innerHTML = `
+                <div class="flex items-start gap-2.5 max-w-[85%] self-end"> <!-- Reduced gap -->
+                    <div class="user-message-card rounded-xl p-3 shadow-sm order-1"> <!-- Adjusted rounding -->
+                        <p class="text-sm text-gray-800 break-words"></p>
+                    </div>
+                    <div class="user-icon-bg p-2 rounded-full flex-shrink-0 shadow-sm order-2 flex items-center justify-center w-9 h-9">
+                        <i class="fas fa-user w-4 h-4 user-icon-color"></i>
+                    </div>
+                </div>
+            `;
+            messageElement.querySelector('p').appendChild(textContent);
+            chatContainer.appendChild(messageElement);
+
+            if (addToHistoryAndSave) {
+                 // Note: History saving is now handled more centrally after user/AI turn completion
+                 // This display function only focuses on rendering.
+                 // BUT, for user messages, we need to add it immediately for context.
+                 // Let's keep the immediate addition but maybe rethink saving strategy later if needed.
+                 conversationHistory.push({ role: "user", parts: [{ text: message }] });
+                 // Defer saving slightly? Or save in the main handler? Let's save in the main handler for now.
+                 // saveHistoryToLocalStorage(); // Let's move saving to the handler
+            }
+            // Scroll handled by caller
+        }
+
+        function displayAIMessage(message, addToHistoryAndSave = true) {
+             if (!chatContainer) return;
+             const messageElement = document.createElement('div');
+             messageElement.className = 'flex items-start gap-2.5 max-w-[85%] self-start group animate-fade-in'; // Reduced gap & fade-in
+
+             // Configure Marked
+             marked.setOptions({
+                 gfm: true, // Enable GitHub Flavored Markdown
+                 breaks: true, // Render line breaks as <br>
+                 highlight: function(code, lang) {
+                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                     try {
+                         return hljs.highlight(code, { language, ignoreIllegals: true }).value;
+                     } catch (error) {
+                         console.error("Highlight.js error:", error);
+                         // Fallback to plain text rendering on error
+                         const escaped = code.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">");
+                         return `<code class="hljs language-${language}">${escaped}</code>`;
+                     }
+                 }
+             });
+             const renderedMarkdown = marked.parse(message);
+
+             messageElement.innerHTML = `
+                 <div class="ai-icon-bg p-2 rounded-full flex-shrink-0 shadow-sm flex items-center justify-center w-9 h-9">
+                     <i class="fas fa-robot w-4 h-4 ai-icon-color"></i>
+                 </div>
+                 <div class="ai-message-card rounded-xl p-3 shadow-sm overflow-hidden"> <!-- Adjusted rounding -->
+                     <div class="ai-message-content text-sm text-gray-800 break-words">
+                         ${renderedMarkdown}
+                     </div>
+                 </div>
+             `;
+             chatContainer.appendChild(messageElement);
+
+             // History saving handled elsewhere for AI messages (after successful fetch)
+             // Scroll handled by caller
+         }
+
+        // --- Function to show/hide typing indicator ---
+        function showTypingIndicator(show) {
+            if (!typingIndicator) return;
+            if (show) {
+                typingIndicator.classList.remove('hidden');
+                typingIndicator.classList.add('flex','items-center','justify-start');
+            } else {
+                typingIndicator.classList.add('hidden');
+                typingIndicator.classList.remove('flex','items-center','justify-start');
+            }
+        }
+
+        // --- Function to Fetch AI Response from Gemini ---
+        async function getAIResponse() {
+            // ** UPDATED Instruction - More concise, focus on less emoji **
+            const instructionPrefix = `IMPORTANT INSTRUCTION: Jawab HAMESHA Roman Urdu mein do. English words kam istemal karna. Lehja normal/friendly rakho, thora helpful, bohat ziada funny/emojis nahi. Markdown formatting (lists, code blocks, etc.) use karo jahan zaroori ho. Ab is sawal/message ka jawab do: `;
+
+            // Use a clean copy of history for the API, potentially modified
+            const historyForAPI = JSON.parse(JSON.stringify(conversationHistory));
+
+            // Prepend instruction to the *last* user message sent to the API
+            if (historyForAPI.length > 0 && historyForAPI[historyForAPI.length - 1].role === 'user') {
+                historyForAPI[historyForAPI.length - 1].parts[0].text = instructionPrefix + historyForAPI[historyForAPI.length - 1].parts[0].text;
+            } else if (historyForAPI.length === 0) {
+                // Handle edge case of first message (though initial greeting usually exists)
+                 historyForAPI.push({ role: "user", parts: [{ text: instructionPrefix + "(User ne abhi kuch nahi kaha, bas guftugu shuru karo.)"}] });
+            }
+
+            // Optional: Remove initial greeting from API context if it's just before the first user message
+             if (historyForAPI.length >= 2 && historyForAPI[0].role === 'model' && historyForAPI[1].role === 'user' && conversationHistory.length <=2 ) {
+                // Only remove the very first greeting if it's the actual start of convo
+                 // historyForAPI.shift(); // Let's keep it for now, might provide context
+             }
+             // Limit context sent to API (e.g., last 10-20 messages) to save tokens/cost
+             const limitedHistoryForAPI = historyForAPI.slice(-20); // Send last 20 turns
+
+
+            const requestBody = {
+                contents: limitedHistoryForAPI, // Send limited & potentially modified history
+                 safetySettings: [ // Standard safety settings
+                   { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+                   { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                   { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                   { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" }
+                 ],
+                 generationConfig: {
+                    // temperature: 0.7, // Adjust if needed
+                    // maxOutputTokens: 1000, // Limit response length
+                 }
+            };
+
+            // console.log("Sending to Gemini:", JSON.stringify(requestBody, null, 2));
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({})); // Try to parse JSON error, fallback to empty object
+                console.error("API Error Response:", errorBody);
+                // Provide a more specific error message if possible
+                const detail = errorBody.error?.message || `Status ${response.status}`;
+                throw new Error(`API se jawab nahi mila. (${detail})`);
+            }
+
+            const data = await response.json();
+            // console.log("Received from Gemini:", JSON.stringify(data, null, 2));
+
+            // --- Extract the text response (with improved error/block handling) ---
+             if (!data.candidates || data.candidates.length === 0) {
+                 const blockReason = data.promptFeedback?.blockReason;
+                 if (blockReason) {
+                     console.warn("Prompt blocked:", blockReason);
+                     const safetyRatings = data.promptFeedback?.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_', '')}: ${r.probability}`).join(', ') || 'N/A';
+                     return `Mera system is message ko process nahi kar sakta (Wajah: ${blockReason}). Safety ratings: [${safetyRatings}]. Alag tarah se poochne ki koshish karein.`;
+                 }
+                 throw new Error("AI ne khali jawab bheja (no candidates).");
+             }
+
+             const candidate = data.candidates[0];
+             const finishReason = candidate.finishReason;
+
+              // Handle non-STOP finish reasons proactively
+              if (finishReason && finishReason !== "STOP" && finishReason !== "MAX_TOKENS") {
+                  console.warn("Response finish reason issue:", finishReason);
+                  let finishMsg = `Jawab adhoora reh gaya (Wajah: ${finishReason}).`;
+                  if (finishReason === "SAFETY") {
+                     const safetyRatings = candidate.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_', '')}: ${r.probability}`).join(', ') || 'N/A';
+                     finishMsg = `Jawab safety filters ki wajah se rok diya gaya. [${safetyRatings}]`;
+                  } else if (finishReason === "RECITATION") {
+                     finishMsg = "Jawab mein kuch aisa tha jo copyright ki wajah se nahi dikha sakta.";
+                  }
+                  // Try returning partial content if available
+                  if (candidate.content?.parts?.[0]?.text) {
+                      return candidate.content.parts[0].text.trim() + `\n\n[System Note: ${finishMsg}]`;
+                  }
+                  return `[System Note: ${finishMsg}]`; // Return only the finish reason message if no content parts
+              }
+
+              // Check for missing content even if finishReason is STOP
+             if (!candidate.content?.parts?.[0]?.text) {
+                 console.warn("No text content found in candidate:", candidate);
+                 if (finishReason === "MAX_TOKENS") {
+                     return "[System Note: Jawab bohat lamba ho raha tha isliye poora nahi aa saka. Short karke poochein.]";
+                 }
+                 return "[System Note: Pata nahi kyun, lekin main is waqt iska jawab nahi de sakta. Kuch aur try karein?]";
+             }
+
+             let responseText = candidate.content.parts[0].text.trim();
+
+             // Append MAX_TOKENS warning if needed
+             if (finishReason === "MAX_TOKENS") {
+                 responseText += "\n\n[System Note: Jawab thora lamba tha, shayad poora na ho.]";
+             }
+
+            return responseText;
+        }
+
+        // --- Utility Function to Scroll to Bottom ---
+        function scrollToBottom(instant = false) {
+            if (!chatContainer) return;
+            const delay = instant ? 0 : 50; // Short delay for smooth scroll unless instant
+            setTimeout(() => {
+                chatContainer.scrollTo({
+                    top: chatContainer.scrollHeight,
+                    behavior: instant ? 'instant' : 'smooth'
+                });
+            }, delay);
+        }
+
+         // --- Initial Setup Function ---
+         function initializeChat() {
+             // Get element references *after* DOM is loaded
+             chatContainer = document.getElementById('chat-container');
+             chatForm = document.getElementById('chat-form');
+             messageInput = document.getElementById('message-input');
+             sendButton = document.getElementById('send-button');
+             typingIndicator = document.getElementById('typing-indicator');
+             clearHistoryButton = document.getElementById('clear-history-button');
+             loadingPlaceholder = document.getElementById('loading-placeholder');
+
+             // Add event listeners only if elements exist
+             if (chatForm) {
+                 chatForm.addEventListener('submit', handleFormSubmit);
+             } else {
+                 console.error("Chat form not found!");
+             }
+
+             if (clearHistoryButton) {
+                 clearHistoryButton.addEventListener('click', handleClearHistory);
+             } else {
+                 console.error("Clear history button not found!");
+             }
+
+              // Add simple fade-in animation style
+             const style = document.createElement('style');
+             style.textContent = `
+                 @keyframes fadeIn {
+                     from { opacity: 0; transform: translateY(10px); }
+                     to { opacity: 1; transform: translateY(0); }
+                 }
+                 .animate-fade-in {
+                     animation: fadeIn 0.3s ease-out forwards;
+                 }
+             `;
+             document.head.appendChild(style);
+
+
+             // Load history and set focus
+             loadHistoryFromLocalStorage();
+             if (messageInput) {
+                 messageInput.focus();
+             }
+         }
+
+         // --- Run Initialization ---
+         // Ensures the script runs after the DOM is fully parsed and ready
+         if (document.readyState === 'loading') { // Loading hasn't finished yet
+            document.addEventListener('DOMContentLoaded', initializeChat);
+         } else { // `DOMContentLoaded` has already fired
+            initializeChat();
+         }
 
     </script>
 
