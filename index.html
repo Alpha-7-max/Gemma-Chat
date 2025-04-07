@@ -3,174 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chatbot Assistant</title>
+    <title>Roman Urdu Chatbot</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            --header-bg: #ffffff;
-            --header-border: #e5e8eb;
-            --header-text: #1f2937;
+            --header-bg: #ffffff; --header-border: #e5e8eb; --header-text: #1f2937;
             --chat-bg: #f0f4f8;
-            --user-msg-bg: #e0e7ff;
-            --user-msg-border: #c7d2fe;
-            --user-icon-bg: #c7d2fe;
-            --user-icon-text: #4f46e5;
-            --ai-msg-bg: #ffffff;
-            --ai-msg-border: #e5e8eb;
-            --ai-icon-bg: #f3f4f6;
-            --ai-icon-text: #374151;
-            --input-bg: #ffffff;
-            --input-border: #d1d5db;
-            --primary-color: #4f46e5;
-            --text-color: #1f2937;
-            --scrollbar-thumb: #a5b4fc;
-            --scrollbar-track: #e0e7ff;
-            --icon-button-hover-bg: #e5e7eb; /* Gray-200 */
+            --user-msg-bg: #e0e7ff; --user-msg-border: #c7d2fe; --user-icon-bg: #c7d2fe; --user-icon-text: #4f46e5;
+            --ai-msg-bg: #ffffff; --ai-msg-border: #e5e8eb; --ai-icon-bg: #f3f4f6; --ai-icon-text: #374151;
+            --input-bg: #ffffff; --input-border: #d1d5db;
+            --primary-color: #4f46e5; --text-color: #1f2937;
+            --scrollbar-thumb: #a5b4fc; --scrollbar-track: #e0e7ff;
+            --icon-button-hover-bg: #e5e7eb;
         }
 
+        /* Height Fix for Mobile */
         html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent body scroll */
+            height: 100%; margin: 0; padding: 0;
         }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
             color: var(--text-color);
-            overscroll-behavior-y: contain;
+            overscroll-behavior-y: contain; /* Prevent pull-to-refresh */
+            display: flex; flex-direction: column; /* Ensure body fills height */
         }
 
         #chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            display: flex; flex-direction: column;
+            height: 100%; width: 100%; /* Fill parent (body) */
             background-color: var(--chat-bg);
+            overflow: hidden; /* Prevent container itself from scrolling */
         }
 
         /* Header Styling */
         #header {
-            background-color: var(--header-bg);
-            border-bottom: 1px solid var(--header-border);
-            padding: 0.75rem 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
+            background-color: var(--header-bg); border-bottom: 1px solid var(--header-border);
+            padding: 0.75rem 1rem; display: flex; align-items: center;
+            justify-content: space-between; flex-shrink: 0; /* Prevents shrinking */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            position: sticky; top: 0; z-index: 10; /* Ensure header stays on top */
         }
-
-        #header h1 {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: var(--header-text);
-            margin: 0;
-        }
-
-        #clear-chat-button {
-            background: none; border: none; color: #6b7280;
-            font-size: 1.1rem; cursor: pointer; padding: 0.5rem;
-            border-radius: 50%; transition: background-color 0.2s ease, color 0.2s ease;
-        }
+        #header h1 { font-size: 1.15rem; font-weight: 600; color: var(--header-text); margin: 0; }
+        #clear-chat-button { background: none; border: none; color: #6b7280; font-size: 1.1rem; cursor: pointer; padding: 0.5rem; border-radius: 50%; transition: background-color 0.2s ease, color 0.2s ease; }
         #clear-chat-button:hover { background-color: var(--icon-button-hover-bg); color: #dc2626; }
         #clear-chat-button:active { transform: scale(0.95); }
 
-
+        /* Chat History - Takes remaining space */
         #chat-history {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 1rem;
-            scroll-behavior: smooth;
+            flex-grow: 1; /* Allows filling available space */
+            overflow-y: auto; padding: 1rem; scroll-behavior: smooth;
         }
+        #chat-history::-webkit-scrollbar { width: 6px; } #chat-history::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; } #chat-history::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; } #chat-history::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
 
-        /* Custom Scrollbar */
-        #chat-history::-webkit-scrollbar { width: 6px; }
-        #chat-history::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
-        #chat-history::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
-        #chat-history::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
-
-        .message-card {
-            display: flex; align-items: flex-start; gap: 0.75rem;
-            margin-bottom: 1rem; max-width: 85%;
-            opacity: 0; transform: translateY(10px);
-            animation: messageFadeIn 0.3s ease-out forwards;
-        }
+        /* Message Cards */
+        .message-card { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1rem; max-width: 85%; opacity: 0; transform: translateY(10px); animation: messageFadeIn 0.3s ease-out forwards; }
         @keyframes messageFadeIn { to { opacity: 1; transform: translateY(0); } }
-
-        .message-icon {
-            flex-shrink: 0; width: 2.5rem; height: 2.5rem;
-            border-radius: 9999px; display: flex; align-items: center;
-            justify-content: center; font-size: 1rem;
-        }
-
-        .message-content {
-            flex-grow: 1; padding: 0.75rem 1rem; border-radius: 0.75rem;
-            border-width: 1px; word-wrap: break-word; overflow-wrap: break-word;
-        }
-
-        /* Message Styles */
-        .user-message { margin-left: auto; flex-direction: row-reverse; }
-        .user-message .message-icon { background-color: var(--user-icon-bg); color: var(--user-icon-text); }
-        .user-message .message-content { background-color: var(--user-msg-bg); border-color: var(--user-msg-border); color: var(--text-color); border-top-right-radius: 0.25rem; }
-
-        .ai-message { margin-right: auto; flex-direction: row; }
-        .ai-message .message-icon { background-color: var(--ai-icon-bg); color: var(--ai-icon-text); }
-        .ai-message .message-content { background-color: var(--ai-msg-bg); border-color: var(--ai-msg-border); color: var(--text-color); border-top-left-radius: 0.25rem; }
-
-        .system-message {
-             display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem auto;
-             padding: 0.5rem 1rem; max-width: 90%; border-radius: 0.5rem;
-             font-size: 0.9em; border-width: 1px; opacity: 0; transform: translateY(10px);
-             animation: messageFadeIn 0.3s ease-out forwards;
-             background-color: #fffbeb; border-color: #fef3c7; color: #b45309; /* Amber theme */
-         }
-         .system-message .message-icon { width: 1.5rem; height: 1.5rem; font-size: 0.8rem; background-color: #fef3c7; color: #b45309; border-radius: 50%; }
-         .system-message .message-content { background-color: transparent; border: none; padding: 0; color: inherit; }
+        .message-icon { flex-shrink: 0; width: 2.5rem; height: 2.5rem; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .message-content { flex-grow: 1; padding: 0.75rem 1rem; border-radius: 0.75rem; border-width: 1px; word-wrap: break-word; overflow-wrap: break-word; }
+        .user-message { margin-left: auto; flex-direction: row-reverse; } .user-message .message-icon { background-color: var(--user-icon-bg); color: var(--user-icon-text); } .user-message .message-content { background-color: var(--user-msg-bg); border-color: var(--user-msg-border); color: var(--text-color); border-top-right-radius: 0.25rem; }
+        .ai-message { margin-right: auto; flex-direction: row; } .ai-message .message-icon { background-color: var(--ai-icon-bg); color: var(--ai-icon-text); } .ai-message .message-content { background-color: var(--ai-msg-bg); border-color: var(--ai-msg-border); color: var(--text-color); border-top-left-radius: 0.25rem; }
+        .system-message { display: flex; align-items: center; gap: 0.5rem; margin: 0.5rem auto; padding: 0.5rem 1rem; max-width: 90%; border-radius: 0.5rem; font-size: 0.9em; border-width: 1px; opacity: 0; transform: translateY(10px); animation: messageFadeIn 0.3s ease-out forwards; background-color: #fffbeb; border-color: #fef3c7; color: #b45309; } .system-message .message-icon { width: 1.5rem; height: 1.5rem; font-size: 0.8rem; background-color: #fef3c7; color: #b45309; border-radius: 50%; } .system-message .message-content { background-color: transparent; border: none; padding: 0; color: inherit; }
 
         /* Input Area */
-        #input-area {
-            background-color: var(--input-bg); border-top: 1px solid var(--input-border);
-            padding: 0.75rem 1rem; display: flex; align-items: flex-end;
-            gap: 0.5rem; flex-shrink: 0;
-        }
-
-        #user-input {
-            flex-grow: 1; border: 1px solid var(--input-border); border-radius: 1.5rem;
-            padding: 0.6rem 1rem; resize: none; overflow-y: hidden; max-height: 100px;
-            outline: none; transition: border-color 0.2s ease; background-color: #f9fafb;
-            line-height: 1.4;
-        }
+        #input-area { background-color: var(--input-bg); border-top: 1px solid var(--input-border); padding: 0.75rem 1rem; display: flex; align-items: flex-end; gap: 0.5rem; flex-shrink: 0; /* Prevents shrinking */ }
+        #user-input { flex-grow: 1; border: 1px solid var(--input-border); border-radius: 1.5rem; padding: 0.6rem 1rem; resize: none; overflow-y: hidden; max-height: 100px; outline: none; transition: border-color 0.2s ease; background-color: #f9fafb; line-height: 1.4; }
         #user-input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2); }
-
-        #send-button {
-            flex-shrink: 0; background-color: var(--primary-color); color: white;
-            border-radius: 9999px; width: 2.75rem; height: 2.75rem; display: flex;
-            align-items: center; justify-content: center; transition: background-color 0.2s ease, transform 0.1s ease;
-            border: none; cursor: pointer;
-        }
-        #send-button:hover { background-color: #4338ca; }
-        #send-button:active { transform: scale(0.95); }
-        #send-button:disabled { background-color: #a5b4fc; cursor: not-allowed; transform: scale(1); }
-
-        /* REMOVED: #typing-indicator and .dot-flashing CSS */
+        #send-button { flex-shrink: 0; background-color: var(--primary-color); color: white; border-radius: 9999px; width: 2.75rem; height: 2.75rem; display: flex; align-items: center; justify-content: center; transition: background-color 0.2s ease, transform 0.1s ease; border: none; cursor: pointer; }
+        #send-button:hover { background-color: #4338ca; } #send-button:active { transform: scale(0.95); } #send-button:disabled { background-color: #a5b4fc; cursor: not-allowed; transform: scale(1); }
 
         /* Markdown Styles */
-        .message-content h1, .message-content h2, .message-content h3 { margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.3; font-weight: 600; }
-        .message-content h1 { font-size: 1.4em; } .message-content h2 { font-size: 1.2em; } .message-content h3 { font-size: 1.1em; }
-        .message-content p { margin-bottom: 0.8em; line-height: 1.6; }
-        .message-content ul, .message-content ol { margin-left: 1.5em; margin-bottom: 0.8em; }
-        .message-content li { margin-bottom: 0.3em; }
-        .message-content code { background-color: #e5e7eb; padding: 0.2em 0.4em; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; word-break: break-all; }
-        .message-content pre { background-color: #1f2937; color: #f3f4f6; padding: 0.8em; border-radius: 6px; overflow-x: auto; margin-bottom: 0.8em; }
-        .message-content pre code { background-color: transparent; padding: 0; font-size: 0.9em; word-break: normal; }
-        .message-content a { color: var(--primary-color); text-decoration: underline; }
-        .message-content a:hover { text-decoration: none; }
-        .message-content strong { font-weight: 600; } .message-content em { font-style: italic; }
-        .message-content table { border-collapse: collapse; width: 100%; margin-bottom: 1em; border: 1px solid var(--ai-msg-border); }
-        .message-content th, .message-content td { border: 1px solid var(--ai-msg-border); padding: 0.5em; text-align: left; }
-        .message-content th { background-color: var(--ai-icon-bg); font-weight: 600; }
+         .message-content h1, .message-content h2, .message-content h3 { margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.3; font-weight: 600; } .message-content h1 { font-size: 1.4em; } .message-content h2 { font-size: 1.2em; } .message-content h3 { font-size: 1.1em; }
+         .message-content p { margin-bottom: 0.8em; line-height: 1.6; } .message-content ul, .message-content ol { margin-left: 1.5em; margin-bottom: 0.8em; } .message-content li { margin-bottom: 0.3em; }
+         .message-content code { background-color: #e5e7eb; padding: 0.2em 0.4em; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; word-break: break-all; }
+         .message-content pre { background-color: #1f2937; color: #f3f4f6; padding: 0.8em; border-radius: 6px; overflow-x: auto; margin-bottom: 0.8em; } .message-content pre code { background-color: transparent; padding: 0; font-size: 0.9em; word-break: normal; }
+         .message-content a { color: var(--primary-color); text-decoration: underline; } .message-content a:hover { text-decoration: none; }
+         .message-content strong { font-weight: 600; } .message-content em { font-style: italic; }
+         .message-content table { border-collapse: collapse; width: 100%; margin-bottom: 1em; border: 1px solid var(--ai-msg-border); } .message-content th, .message-content td { border: 1px solid var(--ai-msg-border); padding: 0.5em; text-align: left; } .message-content th { background-color: var(--ai-icon-bg); font-weight: 600; }
 
     </style>
 </head>
@@ -178,7 +89,7 @@
     <div id="chat-container">
         <!-- Header Section -->
         <div id="header">
-            <h1>AI Assistant</h1>
+            <h1>Chat Assistant</h1>
             <button id="clear-chat-button" title="Chat History Saaf Karein" aria-label="Clear chat history">
                 <i class="fas fa-trash-alt"></i>
             </button>
@@ -188,8 +99,6 @@
         <div id="chat-history">
             <!-- Messages appear here -->
         </div>
-
-        <!-- REMOVED: Typing Indicator Div -->
 
         <!-- Input Area -->
         <div id="input-area">
@@ -201,22 +110,25 @@
     </div>
 
     <script>
+        // --- Element References ---
         const chatContainer = document.getElementById('chat-container');
         const headerElement = document.getElementById('header');
         const chatHistoryElement = document.getElementById('chat-history');
         const userInputElement = document.getElementById('user-input');
         const sendButtonElement = document.getElementById('send-button');
-        // REMOVED: typingIndicatorElement variable
         const clearChatButton = document.getElementById('clear-chat-button');
 
-        // --- Configuration ---
-        const API_KEY = "AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74"; // WARNING: Insecure!
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${API_KEY}`;
-        const MODEL_NAME = "gemma-3-27b-it";
-        const STORAGE_KEY = 'romanUrduChatHistory';
-        const CONTEXT_WINDOW_MESSAGES = 20;
+        // --- Basic Checks (Optional but good practice) ---
+        if (!userInputElement) console.error("User input element not found!");
+        if (!sendButtonElement) console.error("Send button element not found!");
+        if (!chatHistoryElement) console.error("Chat history element not found!");
 
-        const SYSTEM_PROMPT = { /* ... (same as before) ... */
+        // --- Configuration ---
+        const API_KEY = "AIzaSyDSF270Y1VJf1fe4G8ZAuw7bOITbAlal74"; // WARNING: Insecure! Use backend proxy in production.
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it:generateContent?key=${API_KEY}`;
+        const STORAGE_KEY = 'romanUrduChatHistory';
+        const CONTEXT_WINDOW_MESSAGES = 20; // Keep last 20 user/model turns
+        const SYSTEM_PROMPT = {
              role: 'system',
              parts: [{ text: "Tum aik dostana aur madadgar AI assistant ho jo sirf Roman Urdu mein baat karta hai. Tumhara lehja thora ghair rasmi (informal) aur mazahiya ho sakta hai, lekin hamesha ehtiram wala hona chahiye. Coloquialisms aur aam Roman Urdu istilahaat istemal karo. Grammer aur spelling ka khayal rakho. Jawaab hamesha Roman Urdu mein hi dena hai, chahe user kisi aur zaban mein poochay. Agar kuch samajh na aaye tou wazahat mango. Apne jawab mein Markdown formatting (headings, lists, bold, italic, code, tables, links) istemal kar sakte ho jab zaroori ho. User ke sawalon ka tafseeli jawab dene ki koshish karo aur kabhi kabhi mazeed maloomat ya clarifying sawal bhi poocho. Koi bhi request jo nuksan deh, ghair ikhlaqi, ya qanoon ke khilaf ho, usay narmi se mana kar dena." }]
          };
@@ -226,80 +138,169 @@
 
         // --- Helper Functions ---
         function scrollToBottom() {
+             // Added a small delay to allow DOM update before scrolling
              setTimeout(() => {
-                 chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
+                if(chatHistoryElement) {
+                    chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
+                }
              }, 50);
          }
-        // REMOVED: showTypingIndicator and hideTypingIndicator functions
 
         // --- Initialization ---
         window.addEventListener('DOMContentLoaded', () => {
-            // REMOVED: hideTypingIndicator();
+            console.log("DOM Loaded. Initializing chat...");
             loadChatHistory();
-            renderChatHistory();
-            setupInputHandling();
-            setupClearChatHandler();
-            userInputElement.focus();
+            renderChatHistory(); // Render existing messages first
+            setupInputHandling(); // Setup event listeners after elements are available
+            setupClearChatHandler(); // Setup clear button listener
+            if(userInputElement) userInputElement.focus(); // Focus input field
+            console.log("Initialization complete.");
         });
 
         // --- Chat History Management ---
         const initialGreetingMessage = {
              role: 'model',
-             parts: [{ text: "Assalam Alaikum! Main aik AI assistant hoon. Kya madad kar sakta hoon aaj?" }]
+             parts: [{ text: "Assalam Alaikum! Mein aap ka AI assistant hoon. Aaj kya madad kar sakta hoon?" }]
         };
 
-        function loadChatHistory() { /* ... (same as before) ... */
-             const storedHistory = localStorage.getItem(STORAGE_KEY);
-             if (storedHistory) {
-                 try {
-                     const parsedHistory = JSON.parse(storedHistory);
-                     if (Array.isArray(parsedHistory) && parsedHistory.length > 0) { conversationHistory = parsedHistory; }
-                     else { console.warn("Stored history invalid/empty, resetting."); conversationHistory = [initialGreetingMessage]; }
-                 } catch (e) { console.error("Failed parsing stored history:", e); conversationHistory = [initialGreetingMessage]; }
-             } else { conversationHistory = [initialGreetingMessage]; }
+        function loadChatHistory() {
+            const storedHistory = localStorage.getItem(STORAGE_KEY);
+            if (storedHistory) {
+                try {
+                    const parsedHistory = JSON.parse(storedHistory);
+                    // Validate if it's a non-empty array
+                    if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+                        conversationHistory = parsedHistory;
+                        console.log(`Loaded ${conversationHistory.length} messages from localStorage.`);
+                    } else {
+                        console.warn("Stored history is invalid or empty, resetting.");
+                        conversationHistory = [initialGreetingMessage]; // Start fresh
+                    }
+                } catch (e) {
+                    console.error("Failed parsing stored history:", e);
+                    conversationHistory = [initialGreetingMessage]; // Start fresh on error
+                }
+            } else {
+                 console.log("No chat history found in localStorage, starting new.");
+                 conversationHistory = [initialGreetingMessage]; // Start fresh if nothing stored
+            }
+             // Trim on load to maintain context window size immediately
              trimHistory();
-         }
-        function saveChatHistory() { /* ... (same as before) ... */
-            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(conversationHistory)); }
-            catch (e) { console.error("Failed to save history:", e); displayMessage('system', "History save nahi ho pa rahi.", true); }
         }
-        function trimHistory() { /* ... (same as before) ... */
-             if (conversationHistory.length > CONTEXT_WINDOW_MESSAGES) { conversationHistory = conversationHistory.slice(-CONTEXT_WINDOW_MESSAGES); }
-         }
+
+        function saveChatHistory() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(conversationHistory));
+                 // console.log(`Saved ${conversationHistory.length} messages to localStorage.`); // Optional debug log
+            } catch (e) {
+                console.error("Failed to save chat history:", e);
+                 // Optionally display a non-intrusive error to the user
+                 displayMessage('system', "Maaf kijiyega, lagta hai aapki chat history save nahi ho pa rahi.", true);
+            }
+        }
+
+        function trimHistory() {
+            const maxTurns = CONTEXT_WINDOW_MESSAGES; // Max user+AI messages
+            if (conversationHistory.length > maxTurns) {
+                // Keep only the last 'maxTurns' messages
+                conversationHistory = conversationHistory.slice(-maxTurns);
+                console.log(`History trimmed to last ${conversationHistory.length} messages.`);
+            }
+        }
+
         function clearChatHistory() {
-            conversationHistory = [initialGreetingMessage];
-            localStorage.removeItem(STORAGE_KEY);
-            saveChatHistory();
-            renderChatHistory();
-            console.log("Chat history cleared.");
-         }
-        function getHistoryForAPI() { /* ... (same as before) ... */
-             const actualConversation = conversationHistory.filter(msg => msg.role === 'user' || msg.role === 'model');
-             const formattedHistory = [];
-             formattedHistory.push({ role: 'user', parts: [SYSTEM_PROMPT.parts[0]] });
-             formattedHistory.push({ role: 'model', parts: [{ text: "Theek hai, samajh gaya. Main Roman Urdu mein hi jawab dunga aur dostana rahunga." }] });
-             actualConversation.forEach(msg => formattedHistory.push(msg));
-             const totalMessagesToSend = CONTEXT_WINDOW_MESSAGES + 2;
-             if (formattedHistory.length > totalMessagesToSend) { return [ formattedHistory[0], formattedHistory[1], ...formattedHistory.slice(-CONTEXT_WINDOW_MESSAGES) ]; }
-             else { return formattedHistory; }
-         }
+            const confirmation = confirm("Kya aap waqai poori chat history delete karna chahte hain? Yeh action undo nahi ho sakta.");
+            if (confirmation) {
+                conversationHistory = [initialGreetingMessage]; // Reset to only the initial greeting
+                localStorage.removeItem(STORAGE_KEY); // Clear storage
+                saveChatHistory(); // Save the cleared (initial) state
+                renderChatHistory(); // Update the UI
+                console.log("Chat history cleared.");
+            }
+        }
+
+        function getHistoryForAPI() {
+            try {
+                const actualConversation = Array.isArray(conversationHistory)
+                    ? conversationHistory.filter(msg => msg && (msg.role === 'user' || msg.role === 'model'))
+                    : [];
+
+                const systemUserPrompt = { role: 'user', parts: SYSTEM_PROMPT.parts };
+                const systemModelAck = { role: 'model', parts: [{ text: "Theek hai, samajh gaya. Main Roman Urdu mein hi jawab dunga aur madadgar rahunga." }] };
+
+                // Ensure we don't exceed the overall intended context window INCLUDING system prompts
+                // If CONTEXT_WINDOW_MESSAGES = 20, we take the last 20 turns
+                const conversationToKeep = actualConversation.slice(-CONTEXT_WINDOW_MESSAGES);
+
+                const finalHistory = [
+                    systemUserPrompt,
+                    systemModelAck,
+                    ...conversationToKeep
+                ];
+
+                // Ensure it's a valid array (should always be due to structure above)
+                if (!Array.isArray(finalHistory) || finalHistory.length < 2) {
+                    console.error("getHistoryForAPI generated invalid history:", finalHistory);
+                    return [ systemUserPrompt, systemModelAck ]; // Minimal fallback
+                }
+                // console.log("Final history for API:", JSON.stringify(finalHistory)); // Verbose debug
+                return finalHistory;
+
+            } catch (error) {
+                console.error("Error inside getHistoryForAPI:", error);
+                return [ { role: 'user', parts: SYSTEM_PROMPT.parts }, { role: 'model', parts: [{ text: "Theek hai." }] } ]; // Minimal fallback
+            }
+        }
 
         // --- UI Rendering ---
-        function renderChatHistory() { /* ... (same as before) ... */
-            chatHistoryElement.innerHTML = '';
-            conversationHistory.forEach(message => { if (message.role !== 'system') displayMessage(message.role, message.parts[0].text, false); });
-            if (conversationHistory.length > 1) scrollToBottom();
+        function renderChatHistory() {
+            if (!chatHistoryElement) return; // Safety check
+            chatHistoryElement.innerHTML = ''; // Clear display first
+            conversationHistory.forEach(message => {
+                // Don't render the conceptual system prompt used only for API
+                if (message.role !== 'system') {
+                     // Ensure message.parts exists and has content
+                     if(message.parts && message.parts.length > 0 && message.parts[0].text) {
+                         displayMessage(message.role, message.parts[0].text, false); // No animation on full re-render
+                     } else {
+                         console.warn("Skipping message with invalid structure:", message);
+                     }
+                }
+            });
+             // Scroll down only if there are messages to scroll to
+             if (conversationHistory.length > 1) { // More than just the initial greeting
+                 scrollToBottom();
+             }
         }
-        function displayMessage(role, text, animate = true) { /* ... (same as before) ... */
+
+         // --- Markdown Rendering & Sanitization ---
+         function displayMessage(role, text, animate = true) {
+            if (!chatHistoryElement) return; // Safety check
+
             const messageCard = document.createElement('div');
             const icon = document.createElement('div'); icon.classList.add('message-icon');
             const content = document.createElement('div');
 
             if (!animate) { messageCard.style.opacity = '1'; messageCard.style.transform = 'translateY(0)'; }
 
-            marked.setOptions({ gfm: true, breaks: true, mangle: false, headerIds: false, sanitizer: (html) => html });
-            try { content.innerHTML = marked.parse(text || ""); } catch(e) { console.error("Markdown parse error:", e); content.textContent = text; }
+             // Configure marked - IMPORTANT: Use a proper sanitizer like DOMPurify in production!
+             marked.setOptions({
+                 gfm: true, breaks: true, mangle: false, headerIds: false,
+                 // WARNING: Disabling sanitize - very unsafe for user input if you ever display it raw.
+                 // For AI output, it's generally safer but still carries risks.
+                 // Consider DOMPurify.sanitize(marked.parse(text)) for production.
+                 sanitize: false
+             });
+             try {
+                  // Basic attempt to prevent <script> tags (minimal protection)
+                  const basicSanitizedText = (text || "").replace(/<script.*?>.*?<\/script>/gis, '');
+                  content.innerHTML = marked.parse(basicSanitizedText);
+             } catch(e) {
+                 console.error("Markdown parse error:", e);
+                 content.textContent = text; // Fallback to plain text
+             }
 
+            // Assign styles based on role
             if (role === 'user') {
                 messageCard.classList.add('message-card', 'user-message'); icon.innerHTML = '<i class="fas fa-user"></i>';
                 icon.classList.add('bg-[var(--user-icon-bg)]', 'text-[var(--user-icon-text)]');
@@ -308,92 +309,181 @@
                 messageCard.classList.add('message-card', 'ai-message'); icon.innerHTML = '<i class="fas fa-robot"></i>';
                 icon.classList.add('bg-[var(--ai-icon-bg)]', 'text-[var(--ai-icon-text)]');
                 content.classList.add('message-content', 'prose', 'bg-[var(--ai-msg-bg)]', 'border-[var(--ai-msg-border)]');
-            } else if (role === 'system') {
-                messageCard.classList.add('system-message'); icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
-                content.classList.add('message-content'); content.textContent = text;
-            } else { return; }
+            } else if (role === 'system') { // For displaying errors/info
+                 messageCard.classList.add('system-message'); icon.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                 content.classList.add('message-content'); content.textContent = text; // System messages usually plain text
+            } else {
+                console.warn("Unknown message role:", role);
+                return; // Don't append unknown roles
+            }
 
             messageCard.appendChild(icon); messageCard.appendChild(content);
             chatHistoryElement.appendChild(messageCard);
 
-            if (animate) scrollToBottom();
+            if (animate) scrollToBottom(); // Scroll only for new messages
         }
 
+
         // --- Input Handling ---
-        function setupInputHandling() { /* ... (same as before) ... */
-             sendButtonElement.addEventListener('click', handleSendMessage);
-             userInputElement.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } setTimeout(() => autoGrowTextarea(userInputElement), 0); });
+        function setupInputHandling() {
+            console.log("Setting up input handlers...");
+            if (!sendButtonElement || !userInputElement) {
+                console.error("Cannot set up input handlers: Button or Input element not found.");
+                return;
+            }
+
+            // Send Button Click
+            sendButtonElement.addEventListener('click', () => {
+                console.log("Send button clicked!");
+                handleSendMessage();
+            });
+
+            // User Input Enter Key
+            userInputElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault(); // Prevent newline
+                    console.log("Enter key pressed!");
+                    handleSendMessage();
+                }
+                 // Adjust height immediately
+                 setTimeout(() => autoGrowTextarea(userInputElement), 0);
+            });
+
+             // Auto-grow on any input change (paste, cut, etc.)
              userInputElement.addEventListener('input', () => autoGrowTextarea(userInputElement));
-             autoGrowTextarea(userInputElement);
-         }
-        function autoGrowTextarea(element) { /* ... (same as before) ... */
-             element.style.height = 'auto'; const newHeight = Math.min(element.scrollHeight, 100);
-             element.style.height = newHeight + 'px'; element.style.overflowY = (element.scrollHeight > 100) ? 'auto' : 'hidden';
-         }
-        function setupClearChatHandler() { /* ... (same as before) ... */
-             clearChatButton.addEventListener('click', clearChatHistory);
+             autoGrowTextarea(userInputElement); // Initial check in case of cached value
+
+             console.log("Input handlers set up.");
+        }
+
+        function autoGrowTextarea(element) {
+            if(!element) return;
+            element.style.height = 'auto'; // Temporarily shrink to measure scrollHeight
+            const newHeight = Math.min(element.scrollHeight, 100); // Cap at max-height (100px)
+            element.style.height = newHeight + 'px';
+            element.style.overflowY = (element.scrollHeight > 100) ? 'auto' : 'hidden'; // Show scrollbar only if needed
+        }
+
+        function setupClearChatHandler() {
+             if (!clearChatButton) {
+                 console.error("Cannot set up clear chat handler: Element not found.");
+                 return;
+             }
+            clearChatButton.addEventListener('click', clearChatHistory);
+            console.log("Clear chat handler set up.");
          }
 
         // --- Send Message & API Call ---
         async function handleSendMessage() {
+            console.log("handleSendMessage called.");
+            if (!userInputElement || !sendButtonElement) {
+                 console.error("Cannot send message: Input or Button element missing.");
+                 return;
+            }
+
             const userText = userInputElement.value.trim();
-            if (!userText || isWaitingForResponse) return;
+            if (!userText) { console.log("Skipping send: Empty input."); return; }
+            if (isWaitingForResponse) { console.log("Skipping send: Already waiting."); return; }
 
             isWaitingForResponse = true;
             sendButtonElement.disabled = true;
-            sendButtonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; // Spinner indicates loading
+            sendButtonElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            console.log("Processing user message...");
 
+            // --- Display & Store User Message ---
             displayMessage('user', userText, true);
             conversationHistory.push({ role: 'user', parts: [{ text: userText }] });
-            trimHistory();
-            saveChatHistory();
+            trimHistory(); saveChatHistory();
 
+            // --- Clear Input ---
             userInputElement.value = '';
             autoGrowTextarea(userInputElement);
-            scrollToBottom(); // Scroll after adding user message
+            scrollToBottom();
 
-            // REMOVED: showTypingIndicator();
-
+            // --- Prepare & Validate History for API ---
             const historyForApi = getHistoryForAPI();
+            console.log("Value of historyForApi before fetch:", historyForApi ? `Array with ${historyForApi.length} items` : historyForApi); // Log validation info
 
+            if (!Array.isArray(historyForApi) || historyForApi.length === 0) {
+                console.error("Error: historyForApi is not a valid non-empty array! Cannot call API.", historyForApi);
+                displayMessage('system', "Maaf karen, message history tayyar karne mein masla aa raha hai. Dobara koshish karein.", true);
+                isWaitingForResponse = false; // Reset state
+                sendButtonElement.disabled = false;
+                sendButtonElement.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                userInputElement.focus();
+                return; // Stop execution
+            }
+
+            console.log("History validated. Calling API...");
+
+            // --- API Call ---
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: historyForApi,
+                        contents: historyForApi, // Pass validated history
                         generationConfig: { temperature: 0.75, topP: 0.95, topK: 50 },
                         safetySettings: [
-                             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
-                             { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
+                             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                             { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                             { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                             { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }
                           ]
                     })
                 });
 
-                // REMOVED: hideTypingIndicator() call here
+                console.log(`API Response Status: ${response.status}`);
 
+                // --- Process Response ---
                 if (!response.ok) {
-                     const errorBody = await response.text(); console.error("API Error:", response.status, errorBody); let errorMsg = `API Error (${response.status}).`; try { const errJson = JSON.parse(errorBody); if (errJson.error?.message) errorMsg = `API se masla (${response.status}): ${errJson.error.message}`; } catch (e) {}
+                     const errorBody = await response.text();
+                     console.error(`API Error (${response.status}):`, errorBody);
+                     let errorMsg = `API Error (${response.status}).`;
+                     try { const errJson = JSON.parse(errorBody); if (errJson.error?.message) errorMsg = `API se masla (${response.status}): ${errJson.error.message}`; } catch (e) {}
                      displayMessage('system', `Maaf karen, server se jawab nahi mila. ${errorMsg} Thori dair baad koshish karen.`, true);
-                } else {
-                    const data = await response.json(); let aiResponseText = null;
-                    if (data.promptFeedback?.blockReason) { console.warn("Prompt blocked:", data.promptFeedback.blockReason); displayMessage('system', `Aapka sawal (${data.promptFeedback.blockReason}) policy ki wajah se roka gaya hai.`, true); }
+                 } else {
+                    const data = await response.json();
+                    let aiResponseText = null;
+                    // Check for blocked prompt
+                    if (data.promptFeedback?.blockReason) {
+                        console.warn("Prompt blocked:", data.promptFeedback.blockReason);
+                        displayMessage('system', `Aapka sawal (${data.promptFeedback.blockReason}) policy ki wajah se roka gaya hai.`, true);
+                    } // Check for valid candidate content
                     else if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                        aiResponseText = data.candidates[0].content.parts[0].text; const finishReason = data.candidates[0].finishReason;
-                        if (finishReason && finishReason !== 'STOP') { /* ... Handle finish reasons ... */ console.warn("AI response finished due to:", finishReason); if (finishReason === 'SAFETY') aiResponseText += "\n\n*(System Note: Jawaab ka kuch hissa safety ki wajah se roka gaya hai.)*"; else if (finishReason === 'MAX_TOKENS') aiResponseText += "\n\n*(System Note: Jawaab lamba honay ki wajah se shayad adhoora hai.)*"; else if (finishReason === 'RECITATION') aiResponseText += "\n\n*(System Note: Jawaab mein recitation policy ki wajah se tabdeeli ki gayi hai.)*"; }
+                        aiResponseText = data.candidates[0].content.parts[0].text;
+                        const finishReason = data.candidates[0].finishReason;
+                        if (finishReason && finishReason !== 'STOP') { // Add notes for non-standard finish reasons
+                             console.warn("AI response finished due to:", finishReason);
+                             if (finishReason === 'SAFETY') aiResponseText += "\n\n*(System Note: Jawaab ka kuch hissa safety ki wajah se roka gaya hai.)*";
+                             else if (finishReason === 'MAX_TOKENS') aiResponseText += "\n\n*(System Note: Jawaab lamba honay ki wajah se shayad adhoora hai.)*";
+                             else if (finishReason === 'RECITATION') aiResponseText += "\n\n*(System Note: Jawaab mein recitation policy ki wajah se tabdeeli ki gayi hai.)*";
+                             else aiResponseText += `\n\n*(System Note: Jawaab ${finishReason} ki wajah se ruk gaya)*`;
+                         }
                     }
-                    if (aiResponseText !== null) { displayMessage('model', aiResponseText, true); conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] }); trimHistory(); saveChatHistory(); }
-                    else if (! (data.promptFeedback?.blockReason) ) { console.error("Unexpected API response:", data); displayMessage('system', "Maaf kijiyega, server se theek jawab nahi mila. Dobara koshish karein.", true); }
+                    // Display valid response or fallback error
+                    if (aiResponseText !== null) {
+                        console.log("Displaying AI response.");
+                        displayMessage('model', aiResponseText, true);
+                        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
+                        trimHistory(); saveChatHistory();
+                    } else if (! (data.promptFeedback?.blockReason) ) { // Avoid double error message if prompt was blocked
+                        console.error("Unexpected API response structure:", data);
+                        displayMessage('system', "Maaf kijiyega, server se theek jawab nahi mila. Dobara koshish karein.", true);
+                    }
                 }
             } catch (error) {
-                // REMOVED: hideTypingIndicator() call here
-                console.error("Error calling API:", error);
+                console.error("Error during fetch operation:", error);
                 displayMessage('system', "Network ya connection ka masla lag raha hai. Internet check karke dobara koshish karein.", true);
             } finally {
+                // --- Reset State ---
                 isWaitingForResponse = false;
-                sendButtonElement.disabled = false;
-                sendButtonElement.innerHTML = '<i class="fas fa-paper-plane"></i>'; // Reset to send icon
-                userInputElement.focus();
+                if(sendButtonElement) { // Check if element exists before modifying
+                    sendButtonElement.disabled = false;
+                    sendButtonElement.innerHTML = '<i class="fas fa-paper-plane"></i>';
+                }
+                if(userInputElement) userInputElement.focus();
+                console.log("Processing finished. Ready for next input.");
             }
         }
 
